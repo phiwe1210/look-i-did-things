@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    ================================================================
+    Look, I Did Things — Version 1
+    ----------------------------------------------------------------
+    A single-page weekly task manager.
+    All HTML, CSS, and JavaScript live in this one file.
+    Data is stored in the browser's localStorage (no server needed).
+    ================================================================
+  -->
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Look, I Did Things</title>
+
+  <!-- PWA: tell the browser this site is installable -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#f4a535" />
+
+  <!-- iOS-specific: makes "Add to Home Screen" feel native on iPhone -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Did Things" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- Favicon (also used by browser tabs and the desktop install prompt) -->
+  <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+
+  <!-- Google Fonts: Playfair Display for headings, DM Sans for body -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ============================================================
+       DESIGN TOKENS — change these to re-skin the whole app
+       CSS custom properties (variables) are referenced everywhere
+       below using `var(--name)`. Edit once, update everywhere.
+       ============================================================ */
+    :root {
+      --bg:            #0f0f13;
+      --surface:       #1a1a24;
+      --surface-2:     #22222e;
+      --border:        #2e2e3e;
+      --text:          #e8e8f0;
+      --text-muted:    #8888a8;
+      --accent:        #f4a535;
+      --accent-soft:   rgba(244, 165, 53, 0.15);
+
+      --priority-high: #ef4444;
+      --priority-mid:  #f59e0b;
+      --priority-low:  #22c55e;
+
+      --radius:        12px;
+      --radius-sm:     8px;
+
+      --font-display:  "Playfair Display", Georgia, serif;
+      --font-body:     "DM Sans", system-ui, -apple-system, sans-serif;
+
+      --shadow-card:   0 1px 2px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* Reset + base */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      /* Reserve space for the bottom nav so content never hides under it */
+      padding-bottom: calc(72px + env(safe-area-inset-bottom));
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; }
+    button { font-family: inherit; cursor: pointer; }
+    input, select, textarea, button { font-family: inherit; font-size: 1rem; }
+
+    /* ============================================================
+       LAYOUT — mobile-first
+       ============================================================ */
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    /* Header (sticky so the week label stays visible while scrolling) */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg);
+      padding: 8px 0 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .header-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .brand { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); }
+    .week-label { color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    /* Carry-over banner (shows only when previous week has incomplete tasks) */
+    .carry-banner {
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .carry-banner p { margin: 0; font-size: 0.9rem; }
+    .carry-banner button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .carry-banner .dismiss {
+      background: transparent;
+      color: var(--text-muted);
+      padding: 4px 8px;
+    }
+
+    /* Day tabs (horizontal scroll on mobile) */
+    .day-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      scrollbar-width: none;
+    }
+    .day-tabs::-webkit-scrollbar { display: none; }
+    .day-tab {
+      flex: 0 0 auto;
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      min-width: 64px;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .day-tab.is-today { border-color: var(--accent); color: var(--accent); }
+    .day-tab.is-active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .day-tab .count {
+      display: block;
+      font-size: 0.7rem;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+
+    /* Section heading (used inside views) */
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      margin: 0 0 12px 0;
+    }
+    .section-sub { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 16px; }
+
+    /* Progress bar (used in many places) */
+    .progress {
+      width: 100%;
+      height: 8px;
+      background: var(--surface-2);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 8px 0 16px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+    .progress-fill.high { background: var(--priority-high); }
+    .progress-fill.mid  { background: var(--priority-mid); }
+    .progress-fill.low  { background: var(--priority-low); }
+
+    /* Task card */
+    .task {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      box-shadow: var(--shadow-card);
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .task.priority-high { border-left-color: var(--priority-high); }
+    .task.priority-mid  { border-left-color: var(--priority-mid); }
+    .task.priority-low  { border-left-color: var(--priority-low); }
+    .task.done { opacity: 0.55; }
+    .task.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+
+    /* Circular checkbox */
+    .checkbox {
+      flex: 0 0 auto;
+      width: 22px; height: 22px;
+      border: 2px solid var(--text-muted);
+      border-radius: 50%;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      margin-top: 2px;
+      transition: all 0.15s;
+    }
+    .checkbox.is-checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .checkbox.is-checked::after {
+      content: "";
+      width: 6px; height: 10px;
+      border: solid var(--bg);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg) translate(-1px, -1px);
+    }
+
+    .task-body { flex: 1; min-width: 0; }
+    .task-text { font-size: 0.97rem; word-break: break-word; }
+    .task-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .task-meta .pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+    }
+    .task .delete {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      padding: 0 4px;
+      opacity: 0.6;
+    }
+    .task .delete:hover { opacity: 1; color: var(--priority-high); }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+    .empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+    /* Add form */
+    .form-group { margin-bottom: 12px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .input, .select, .textarea {
+      width: 100%;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      outline: none;
+    }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); }
+    .textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-top: 8px;
+    }
+    .btn-primary:active { transform: scale(0.98); }
+
+    /* Stats / Progress view */
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 0.9rem; margin-bottom: 4px;
+    }
+    .stat-row .label { color: var(--text-muted); }
+    .stat-row .value { font-weight: 600; }
+    .day-bars {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+      align-items: end;
+      height: 100px;
+    }
+    .day-bar {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      height: 100%;
+    }
+    .day-bar .bar {
+      width: 100%;
+      background: var(--surface-2);
+      border-radius: 4px;
+      flex: 1;
+      display: flex; align-items: flex-end;
+    }
+    .day-bar .bar-fill {
+      width: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: height 0.3s ease;
+    }
+    .day-bar .name { font-size: 0.7rem; color: var(--text-muted); }
+
+    /* Celebration banner (Today view, all complete) */
+    .celebrate {
+      background: linear-gradient(135deg, var(--accent-soft), transparent);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .celebrate .emoji { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+    .celebrate h3 { color: var(--accent); margin-bottom: 4px; }
+
+    /* Bottom navigation (mobile) */
+    .bottom-nav {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+      z-index: 20;
+    }
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.72rem;
+    }
+    .nav-btn.is-active { color: var(--accent); }
+    .nav-btn .icon { font-size: 1.3rem; line-height: 1; }
+
+    /* View visibility — only one view shows at a time */
+    .view { display: none; }
+    .view.is-active { display: block; }
+
+    /* ============================================================
+       DESKTOP LAYOUT — kicks in at 768px and above
+       The bottom nav becomes a left sidebar, the week view
+       shows all 7 days in a grid, and the layout widens.
+       ============================================================ */
+    @media (min-width: 768px) {
+      body { padding-bottom: 0; }
+      .app {
+        max-width: 1100px;
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 32px;
+        padding: 24px 32px;
+      }
+      .header {
+        grid-column: 1 / -1;
+        position: sticky;
+        top: 0;
+        padding: 16px 0;
+      }
+      .carry-banner { grid-column: 1 / -1; }
+      .bottom-nav {
+        position: static;
+        grid-column: 1;
+        align-self: start;
+        flex-direction: column;
+        display: flex;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-top: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        gap: 4px;
+      }
+      .nav-btn {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 12px;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        border-radius: var(--radius-sm);
+        text-align: left;
+      }
+      .nav-btn.is-active { background: var(--accent-soft); }
+      .views-wrapper { grid-column: 2; min-width: 0; }
+
+      /* Week view becomes a 7-column grid (one column per day) */
+      .week-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .week-grid .day-column {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        min-height: 200px;
+      }
+      .week-grid .day-column h3 {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        font-family: var(--font-body);
+        font-weight: 600;
+      }
+      .week-grid .day-column.is-today { border-color: var(--accent); }
+      .week-grid .day-column .task {
+        margin-bottom: 8px;
+        padding: 8px 10px;
+        font-size: 0.85rem;
+      }
+      .week-grid .day-column .task-text { font-size: 0.85rem; }
+      .week-grid .day-column .task-meta { display: none; }
+
+      /* Hide the horizontal day tabs on desktop — we use the grid instead */
+      .day-tabs { display: none; }
+
+      /* Add view: form on left, this-week list on right */
+      .add-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+
+      /* Progress view: stats in a 2-column grid */
+      .progress-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .progress-grid .day-bars-card { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- HEADER ------------------------------------------------- -->
+    <header class="header">
+      <div class="header-row">
+        <h1 class="brand">Look, I Did Things</h1>
+        <span class="week-label" id="weekLabel">Week —</span>
+      </div>
+    </header>
+
+    <!-- CARRY-OVER BANNER (hidden by default, shown via JS) ------ -->
+    <div id="carryBanner" class="carry-banner" hidden>
+      <p id="carryText"></p>
+      <div style="display:flex; gap:8px;">
+        <button class="dismiss" id="carryDismiss">Dismiss</button>
+        <button id="carryConfirm">Carry over</button>
+      </div>
+    </div>
+
+    <!-- VIEWS WRAPPER (everything below the header sits here) ----- -->
+    <main class="views-wrapper">
+
+      <!-- WEEK VIEW ----------------------------------------------- -->
+      <section class="view" id="view-week">
+        <h2 class="section-title">This week</h2>
+        <p class="section-sub" id="weekSub">Tap a day to focus on it.</p>
+
+        <!-- Mobile: horizontal day tabs -->
+        <div class="day-tabs" id="dayTabs" role="tablist"></div>
+
+        <!-- Mobile: list for the selected day -->
+        <div id="weekDayList"></div>
+
+        <!-- Desktop: 7-column grid (rendered separately) -->
+        <div class="week-grid" id="weekGrid"></div>
+      </section>
+
+      <!-- TODAY VIEW ---------------------------------------------- -->
+      <section class="view" id="view-today">
+        <h2 class="section-title" id="todayTitle">Today</h2>
+        <p class="section-sub" id="todaySub"></p>
+        <div class="progress"><div class="progress-fill" id="todayProgress" style="width:0%"></div></div>
+        <div id="todayList"></div>
+      </section>
+
+      <!-- ADD VIEW ------------------------------------------------ -->
+      <section class="view" id="view-add">
+        <h2 class="section-title">Add a task</h2>
+        <p class="section-sub">Dump everything you want to do this week.</p>
+
+        <div class="add-grid">
+          <div>
+            <form id="addForm">
+              <div class="form-group">
+                <label for="taskText">Task</label>
+                <textarea class="textarea" id="taskText" placeholder="e.g. Go for a 5km run" required maxlength="200"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="taskDay">Day</label>
+                  <select class="select" id="taskDay" required>
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="taskPriority">Priority</label>
+                  <select class="select" id="taskPriority" required>
+                    <option value="high">🔴 High</option>
+                    <option value="mid" selected>🟡 Mid</option>
+                    <option value="low">🟢 Low</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="taskCategory">Category</label>
+                <select class="select" id="taskCategory" required>
+                  <option value="Work">Work</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Physical">Physical</option>
+                  <option value="Spiritual">Spiritual</option>
+                  <option value="Intellectual">Intellectual</option>
+                  <option value="Mental Health">Mental Health</option>
+                  <option value="Financial">Financial</option>
+                </select>
+              </div>
+              <button type="submit" class="btn-primary">Add task</button>
+            </form>
+          </div>
+
+          <div>
+            <h3 class="section-title" style="font-size:1.1rem; margin-top: 8px;">Added this week</h3>
+            <div id="addThisWeekList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROGRESS VIEW ------------------------------------------- -->
+      <section class="view" id="view-progress">
+        <h2 class="section-title">Progress</h2>
+        <p class="section-sub" id="progressSub"></p>
+
+        <div class="progress-grid">
+          <div class="stat-card">
+            <h3 style="font-family: var(--font-body); font-size:1rem; margin-bottom:8px;">Overall</h3>
+            <div class="stat-row"><span class="label">Completion</span><span class="value" id="overallPct">0%</span></div>
+            <div class="progress"><div class="progress-fill" id="overallBar" style="width:0%"></div></div>
+            <div class="stat-row"><span class="label">Tasks done</span><span class="value" id="overallCount">0 / 0</span></div>
+          </div>
+
+          <div class="stat-card">
+            <h3 style="font-family: var(--font-body); font-size:1rem; margin-bottom:8px;">By priority</h3>
+            <div id="priorityStats"></div>
+          </div>
+
+          <div class="stat-card">
+            <h3 style="font-family: var(--font-body); font-size:1rem; margin-bottom:8px;">By life area</h3>
+            <div id="categoryStats"></div>
+          </div>
+
+          <div class="stat-card day-bars-card">
+            <h3 style="font-family: var(--font-body); font-size:1rem; margin-bottom:8px;">By day</h3>
+            <div class="day-bars" id="dayBars"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION ---------------------------------------- -->
+    <nav class="bottom-nav" role="tablist" aria-label="Main navigation">
+      <button class="nav-btn" data-view="week"     aria-label="Week"><span class="icon">📅</span><span>Week</span></button>
+      <button class="nav-btn" data-view="today"    aria-label="Today"><span class="icon">☀️</span><span>Today</span></button>
+      <button class="nav-btn" data-view="add"      aria-label="Add"><span class="icon">➕</span><span>Add</span></button>
+      <button class="nav-btn" data-view="progress" aria-label="Progress"><span class="icon">📊</span><span>Progress</span></button>
+    </nav>
+  </div>
+
+  <script>
+    /* ================================================================
+       LOOK, I DID THINGS — APPLICATION LOGIC
+       ----------------------------------------------------------------
+       Concepts you'll see used here:
+         1. localStorage  — persist data in the browser, no server.
+         2. State + render — keep one source of truth, redraw on change.
+         3. Event delegation — one listener handles many task cards.
+         4. Date math      — generate "week keys" so tasks belong to a week.
+       ================================================================ */
+
+    // ---------- 1. CONSTANTS ----------------------------------------
+    // We store all tasks under one key in localStorage.
+    // A "key" is just a name. The value must be a string, so we
+    // JSON.stringify our array when saving, and JSON.parse when reading.
+    const STORAGE_KEY = "lidt_tasks";
+    const CARRY_DISMISS_KEY = "lidt_carry_dismissed"; // tracks which weeks user dismissed the banner for
+
+    const DAY_NAMES_FULL  = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const DAY_NAMES_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+    const CATEGORIES = ["Work","Personal","Physical","Spiritual","Intellectual","Mental Health","Financial"];
+
+    const PRIORITY_ORDER = { high: 0, mid: 1, low: 2 };
+    const PRIORITY_LABEL = { high: "🔴 High", mid: "🟡 Mid", low: "🟢 Low" };
+
+    // ---------- 2. STATE --------------------------------------------
+    // One object holds everything the UI needs. When it changes, we re-render.
+    const state = {
+      tasks: [],           // array of task objects, see data shape in README
+      activeView: "today", // which of the 4 views is showing
+      selectedDay: null,   // which day is selected in the Week view (0-6)
+    };
+
+    // ---------- 3. STORAGE HELPERS ----------------------------------
+    // Read tasks from localStorage. If anything goes wrong (corrupt data,
+    // first-ever run), return an empty array so the app still works.
+    function loadTasks() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.warn("Could not load tasks:", e);
+        return [];
+      }
+    }
+
+    // Save the entire tasks array. We do this after every mutation.
+    // For thousands of tasks this would be slow, but for personal use
+    // (dozens per week) it's fine and keeps the code simple.
+    function saveTasks() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks));
+      } catch (e) {
+        // localStorage can fail if disk is full or in private mode.
+        console.error("Could not save tasks:", e);
+        alert("Could not save your tasks. Storage may be full.");
+      }
+    }
+
+    // ---------- 4. WEEK KEY LOGIC -----------------------------------
+    // Every task is tagged with a week key like "2026-W18" so we know
+    // which week it belongs to. Our weeks run Sunday → Saturday.
+    //
+    // Algorithm:
+    //   1. Find the Sunday at or before the date (start of that week).
+    //   2. Find Jan 1 of that Sunday's year, rolled back to its Sunday.
+    //   3. The week number = floor((days between) / 7) + 1.
+    function getWeekKey(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - d.getDay()); // back to Sunday
+
+      const yearStart = new Date(d.getFullYear(), 0, 1);
+      yearStart.setDate(yearStart.getDate() - yearStart.getDay()); // its Sunday
+
+      const diffMs = d - yearStart;
+      const diffDays = Math.round(diffMs / 86400000);
+      const weekNum = Math.floor(diffDays / 7) + 1;
+      return `${d.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+    }
+
+    function currentWeekKey()  { return getWeekKey(new Date()); }
+    function previousWeekKey() {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      return getWeekKey(d);
+    }
+
+    // Friendly "Week of Apr 27" string for the header
+    function currentWeekLabel() {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - d.getDay()); // Sunday of this week
+      const month = d.toLocaleString(undefined, { month: "short" });
+      return `Week of ${month} ${d.getDate()}`;
+    }
+
+    // ---------- 5. TASK OPERATIONS ----------------------------------
+    function addTask({ text, day, category, priority }) {
+      const task = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        text: text.trim(),
+        day: Number(day),
+        category,
+        priority,
+        done: false,
+        weekKey: currentWeekKey(),
+        createdAt: Date.now(),
+      };
+      state.tasks.push(task);
+      saveTasks();
+    }
+
+    function toggleTask(id) {
+      const t = state.tasks.find(x => x.id === id);
+      if (!t) return;
+      t.done = !t.done;
+      saveTasks();
+    }
+
+    function deleteTask(id) {
+      state.tasks = state.tasks.filter(x => x.id !== id);
+      saveTasks();
+    }
+
+    // Move all undone tasks from previous week into the current week.
+    function carryOverFromLastWeek() {
+      const prev = previousWeekKey();
+      const cur  = currentWeekKey();
+      let count = 0;
+      state.tasks.forEach(t => {
+        if (t.weekKey === prev && !t.done) {
+          t.weekKey = cur;
+          count++;
+        }
+      });
+      if (count) saveTasks();
+      return count;
+    }
+
+    // ---------- 6. SORTING & FILTERING ------------------------------
+    function sortTasks(tasks) {
+      // Undone first, then High → Mid → Low, then by created time.
+      return [...tasks].sort((a, b) => {
+        if (a.done !== b.done) return a.done ? 1 : -1;
+        const p = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+        if (p !== 0) return p;
+        return a.createdAt - b.createdAt;
+      });
+    }
+
+    function tasksThisWeek()        { return state.tasks.filter(t => t.weekKey === currentWeekKey()); }
+    function tasksForDay(day)       { return tasksThisWeek().filter(t => t.day === day); }
+    function tasksForToday()        { return tasksForDay(new Date().getDay()); }
+    function undoneFromLastWeek()   { return state.tasks.filter(t => t.weekKey === previousWeekKey() && !t.done); }
+
+    // ---------- 7. SAFE DOM HELPERS ---------------------------------
+    // Always use textContent (not innerHTML) for user-supplied text.
+    // This prevents accidental script injection if a task contains "<script>".
+    function el(tag, attrs = {}, children = []) {
+      const node = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "class") node.className = v;
+        else if (k === "dataset") Object.assign(node.dataset, v);
+        else if (k.startsWith("on") && typeof v === "function") {
+          node.addEventListener(k.slice(2).toLowerCase(), v);
+        } else if (k === "html") node.innerHTML = v; // only for safe, non-user content
+        else node.setAttribute(k, v);
+      }
+      (Array.isArray(children) ? children : [children]).forEach(c => {
+        if (c == null) return;
+        node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      });
+      return node;
+    }
+
+    // Build a single task card element
+    function taskCard(t, { showMeta = true } = {}) {
+      const card = el("div", { class: `task priority-${t.priority} ${t.done ? "done" : ""}`, dataset: { id: t.id } });
+
+      const checkbox = el("button", {
+        class: `checkbox ${t.done ? "is-checked" : ""}`,
+        "aria-label": t.done ? "Mark incomplete" : "Mark complete",
+        onclick: (e) => { e.stopPropagation(); toggleTask(t.id); render(); },
+      });
+
+      const body = el("div", { class: "task-body" }, [
+        el("div", { class: "task-text" }, t.text),
+      ]);
+      if (showMeta) {
+        const meta = el("div", { class: "task-meta" }, [
+          el("span", { class: "pill" }, DAY_NAMES_SHORT[t.day]),
+          el("span", { class: "pill" }, t.category),
+          el("span", { class: "pill" }, PRIORITY_LABEL[t.priority]),
+        ]);
+        body.appendChild(meta);
+      }
+
+      const del = el("button", {
+        class: "delete",
+        "aria-label": "Delete task",
+        onclick: (e) => {
+          e.stopPropagation();
+          if (confirm("Delete this task?")) { deleteTask(t.id); render(); }
+        },
+      }, "×");
+
+      card.append(checkbox, body, del);
+      return card;
+    }
+
+    // Render a list of tasks (or an empty-state) into a container
+    function renderTaskList(container, tasks, emptyText = "No tasks yet.", opts = {}) {
+      container.innerHTML = "";
+      if (tasks.length === 0) {
+        container.appendChild(el("div", { class: "empty" }, [
+          el("span", { class: "emoji" }, opts.emptyEmoji || "🍃"),
+          el("div", {}, emptyText),
+        ]));
+        return;
+      }
+      sortTasks(tasks).forEach(t => container.appendChild(taskCard(t, opts)));
+    }
+
+    // ---------- 8. VIEW RENDERERS -----------------------------------
+    function renderWeekView() {
+      const today = new Date().getDay();
+      const selected = state.selectedDay ?? today;
+
+      // Mobile: day tabs
+      const tabs = document.getElementById("dayTabs");
+      tabs.innerHTML = "";
+      DAY_NAMES_SHORT.forEach((name, i) => {
+        const dayTasks = tasksForDay(i);
+        const done = dayTasks.filter(t => t.done).length;
+        const total = dayTasks.length;
+        const tab = el("button", {
+          class: `day-tab ${i === today ? "is-today" : ""} ${i === selected ? "is-active" : ""}`,
+          dataset: { day: i },
+          onclick: () => { state.selectedDay = i; render(); },
+        }, [
+          name,
+          el("span", { class: "count" }, total ? `${done}/${total}` : "—"),
+        ]);
+        tabs.appendChild(tab);
+      });
+
+      // Mobile: tasks for selected day
+      const list = document.getElementById("weekDayList");
+      const selectedTasks = tasksForDay(selected);
+      const heading = el("h3", { style: "font-family: var(--font-body); font-size:1rem; margin-bottom:8px;" },
+        `${DAY_NAMES_FULL[selected]}${selected === today ? " (today)" : ""}`);
+      list.innerHTML = "";
+      list.appendChild(heading);
+      // progress bar for the selected day
+      const total = selectedTasks.length;
+      const done = selectedTasks.filter(t => t.done).length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      list.appendChild(el("div", { class: "progress" }, [el("div", { class: "progress-fill", style: `width:${pct}%` })]));
+      const taskWrap = el("div");
+      list.appendChild(taskWrap);
+      renderTaskList(taskWrap, selectedTasks, "Nothing planned for this day yet.");
+
+      // Desktop: 7-column grid
+      const grid = document.getElementById("weekGrid");
+      grid.innerHTML = "";
+      DAY_NAMES_FULL.forEach((name, i) => {
+        const col = el("div", { class: `day-column ${i === today ? "is-today" : ""}` });
+        col.appendChild(el("h3", {}, name));
+        const dayTasks = tasksForDay(i);
+        if (dayTasks.length === 0) {
+          col.appendChild(el("div", { class: "empty", style: "padding: 16px 4px; font-size: 0.8rem;" }, "—"));
+        } else {
+          sortTasks(dayTasks).forEach(t => col.appendChild(taskCard(t, { showMeta: false })));
+        }
+        grid.appendChild(col);
+      });
+    }
+
+    function renderTodayView() {
+      const today = new Date().getDay();
+      const list = document.getElementById("todayList");
+      const tasks = tasksForToday();
+      const total = tasks.length;
+      const done = tasks.filter(t => t.done).length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+
+      document.getElementById("todayTitle").textContent = `Today — ${DAY_NAMES_FULL[today]}`;
+      document.getElementById("todaySub").textContent =
+        total === 0 ? "No tasks scheduled. Free day, or add one in the Add tab." :
+                      `${done} of ${total} complete`;
+      document.getElementById("todayProgress").style.width = pct + "%";
+
+      list.innerHTML = "";
+      if (total > 0 && done === total) {
+        list.appendChild(el("div", { class: "celebrate" }, [
+          el("span", { class: "emoji" }, "🎉"),
+          el("h3", {}, "All done for today"),
+          el("p", { style: "color: var(--text-muted); margin: 0;" }, "Rest, recover, or get a head start on tomorrow."),
+        ]));
+      }
+      renderTaskList(list, tasks, "No tasks scheduled for today.", { emptyEmoji: "☕" });
+    }
+
+    function renderAddView() {
+      const list = document.getElementById("addThisWeekList");
+      renderTaskList(list, tasksThisWeek(), "No tasks added yet this week.");
+
+      // On first render, default the day dropdown to today
+      const dayDropdown = document.getElementById("taskDay");
+      if (!dayDropdown.dataset.touched) {
+        dayDropdown.value = String(new Date().getDay());
+      }
+    }
+
+    function renderProgressView() {
+      const tasks = tasksThisWeek();
+      const total = tasks.length;
+      const done = tasks.filter(t => t.done).length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+
+      document.getElementById("overallPct").textContent = pct + "%";
+      document.getElementById("overallBar").style.width = pct + "%";
+      document.getElementById("overallCount").textContent = `${done} / ${total}`;
+      document.getElementById("progressSub").textContent =
+        total ? `${total} task${total === 1 ? "" : "s"} this week` : "No tasks this week yet.";
+
+      // By priority
+      const pStats = document.getElementById("priorityStats");
+      pStats.innerHTML = "";
+      ["high","mid","low"].forEach(p => {
+        const items = tasks.filter(t => t.priority === p);
+        const d = items.filter(t => t.done).length;
+        const total = items.length;
+        const pct = total ? Math.round((d / total) * 100) : 0;
+        pStats.appendChild(el("div", {}, [
+          el("div", { class: "stat-row" }, [
+            el("span", { class: "label" }, PRIORITY_LABEL[p]),
+            el("span", { class: "value" }, total ? `${d} / ${total}` : "—"),
+          ]),
+          el("div", { class: "progress" }, [
+            el("div", { class: `progress-fill ${p}`, style: `width:${pct}%` }),
+          ]),
+        ]));
+      });
+
+      // By category
+      const cStats = document.getElementById("categoryStats");
+      cStats.innerHTML = "";
+      CATEGORIES.forEach(cat => {
+        const items = tasks.filter(t => t.category === cat);
+        if (items.length === 0) return;
+        const d = items.filter(t => t.done).length;
+        const total = items.length;
+        const pct = total ? Math.round((d / total) * 100) : 0;
+        cStats.appendChild(el("div", {}, [
+          el("div", { class: "stat-row" }, [
+            el("span", { class: "label" }, cat),
+            el("span", { class: "value" }, `${d} / ${total}`),
+          ]),
+          el("div", { class: "progress" }, [
+            el("div", { class: "progress-fill", style: `width:${pct}%` }),
+          ]),
+        ]));
+      });
+      if (!cStats.children.length) cStats.appendChild(el("p", { class: "section-sub", style: "margin:0;" }, "No tasks this week."));
+
+      // By day (bar chart)
+      const dayBars = document.getElementById("dayBars");
+      dayBars.innerHTML = "";
+      // Find max so all bars are scaled the same
+      const dayCounts = DAY_NAMES_SHORT.map((_, i) => tasksForDay(i).length);
+      const maxCount = Math.max(1, ...dayCounts);
+      DAY_NAMES_SHORT.forEach((name, i) => {
+        const items = tasksForDay(i);
+        const d = items.filter(t => t.done).length;
+        // The full bar represents max possible; the fill represents `done`,
+        // but if no tasks, just an empty bar.
+        const heightPct = items.length ? Math.round((d / items.length) * 100) : 0;
+        const barHeight = (items.length / maxCount) * 100; // overall presence on day
+        dayBars.appendChild(el("div", { class: "day-bar" }, [
+          el("div", { class: "bar", style: `height:${barHeight}%` }, [
+            el("div", { class: "bar-fill", style: `height:${heightPct}%` }),
+          ]),
+          el("div", { class: "name" }, name),
+        ]));
+      });
+    }
+
+    // ---------- 9. CARRY-OVER BANNER --------------------------------
+    function renderCarryBanner() {
+      const banner = document.getElementById("carryBanner");
+      const undone = undoneFromLastWeek();
+      const dismissedKey = `${CARRY_DISMISS_KEY}:${currentWeekKey()}`;
+      const dismissed = localStorage.getItem(dismissedKey) === "1";
+      if (undone.length === 0 || dismissed) { banner.hidden = true; return; }
+
+      banner.hidden = false;
+      document.getElementById("carryText").textContent =
+        `${undone.length} task${undone.length === 1 ? "" : "s"} from last week not done. Carry them into this week?`;
+
+      document.getElementById("carryConfirm").onclick = () => {
+        carryOverFromLastWeek();
+        banner.hidden = true;
+        render();
+      };
+      document.getElementById("carryDismiss").onclick = () => {
+        localStorage.setItem(dismissedKey, "1");
+        banner.hidden = true;
+      };
+    }
+
+    // ---------- 10. NAVIGATION --------------------------------------
+    function setView(view) {
+      state.activeView = view;
+      // Update tab visibility
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("is-active"));
+      document.getElementById(`view-${view}`).classList.add("is-active");
+      // Update nav button highlight
+      document.querySelectorAll(".nav-btn").forEach(b => {
+        b.classList.toggle("is-active", b.dataset.view === view);
+      });
+      render();
+    }
+
+    // ---------- 11. MASTER RENDER -----------------------------------
+    // Called any time state changes. Re-renders only the active view
+    // (plus the banner, which is global). Keeps everything in sync.
+    function render() {
+      document.getElementById("weekLabel").textContent = currentWeekLabel();
+      renderCarryBanner();
+      switch (state.activeView) {
+        case "week":     renderWeekView(); break;
+        case "today":    renderTodayView(); break;
+        case "add":      renderAddView(); break;
+        case "progress": renderProgressView(); break;
+      }
+    }
+
+    // ---------- 12. EVENT WIRING ------------------------------------
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.addEventListener("click", () => setView(btn.dataset.view));
+    });
+
+    document.getElementById("addForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = document.getElementById("taskText").value.trim();
+      if (!text) return;
+      addTask({
+        text,
+        day: document.getElementById("taskDay").value,
+        category: document.getElementById("taskCategory").value,
+        priority: document.getElementById("taskPriority").value,
+      });
+      // Reset only the text — keep day/category/priority for fast bulk entry
+      document.getElementById("taskText").value = "";
+      document.getElementById("taskText").focus();
+      render();
+    });
+
+    document.getElementById("taskDay").addEventListener("change", (e) => {
+      e.target.dataset.touched = "1";
+    });
+
+    // ---------- 13. SERVICE WORKER REGISTRATION ---------------------
+    // Registers the offline cache. Only runs in production (via https or localhost).
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/service-worker.js")
+          .catch(err => console.warn("Service worker registration failed:", err));
+      });
+    }
+
+    // ---------- 14. BOOT --------------------------------------------
+    state.tasks = loadTasks();
+    setView("today");          // start on Today view
+  </script>
+</body>
+</html>
