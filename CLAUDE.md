@@ -135,7 +135,50 @@ V2 work happens on the `v2-development` branch; `main` holds the stable V1 deplo
 
 ## Progress Log
 
-The `progress/` folder contains short summaries of recent work, one file per work session, named `YYYY-MM-DD-short-slug.md`. **At the start of every coding session, read the most recent 2–3 files in `progress/`** (sorted by filename, newest last) to pick up context on what was last worked on, what's unfinished, and any open gotchas. See `progress/README.md` for the convention and `progress/TEMPLATE.md` for the format.
+The `progress/` folder contains summaries of past work sessions, organised into per-day subfolders like `progress/2026-05-07/`. Each subfolder has two files: a structured `YYYY-MM-DD-slug.md` log with numbered headings, exact commands, file names, and gotchas; and a `YYYY-MM-DD-slug-overview.txt` written in flowing prose for fast skimming. See `progress/README.md` for the convention and `progress/TEMPLATE.md` for the format.
+
+## Catch Me Up
+
+When the user says **"catch me up"** (or close variants like "where are we", "what was I working on", "let's continue", "what was the last thing", "/catch-up"), do this BEFORE starting any new work:
+
+### Step 1 — Read every overview, oldest first
+
+List the contents of `progress/` and identify every dated subfolder. Sort them by date ascending (oldest first). For each subfolder, read the `*-overview.txt` file. Reading them oldest-to-newest builds a mental timeline of how the project got to where it is today, not just a snapshot of the latest moment.
+
+The overviews are written specifically as the prose, low-jargon recap layer — they're the right size for absorbing a lot of history without burning context. Read them all, even if there are many; they're short.
+
+### Step 2 — Dive into the structured logs only as needed
+
+The matching `*.md` structured logs contain operational detail (exact file paths, exact commands, line numbers, decisions like "we tried X but went with Y", numbered step-by-step recipes). Don't read these all up front. Read a specific structured log only when:
+
+- The user asks "remind me what command we ran to do X"
+- The user asks about a specific decision or trade-off
+- You need the precise file paths or git state from a particular session
+- An overview references something you'd need exact detail for to act on it
+
+### Step 3 — Read the project anchors
+
+After the overviews, also read:
+
+- `look-i-did-things/README.md` — product vision and feature spec
+- `look-i-did-things/WALKTHROUGH.md` — line-by-line code explanation, especially before making structural changes
+
+These give context that the per-session logs don't repeat (the *why* of the project, not just the *what* of last session).
+
+### Step 4 — Run `git status` and `git branch --show-current`
+
+Check what branch we're on and what's uncommitted. The progress logs describe what *was* committed; git tells you what's *currently* in the working tree. Both matter for picking up cleanly.
+
+### Step 5 — Summarise back to Phiwe
+
+In 6–10 sentences, tell him:
+- The arc of the project so far (one or two sentences pulled from the oldest sessions)
+- What was completed in the most recent session
+- What's left unfinished or queued for "next time"
+- Any open gotchas that affect today's work
+- What branch we're on and whether there's anything uncommitted
+
+Then ask what he'd like to pick up. Don't start coding until he answers.
 
 ## Wrap Up Session
 
