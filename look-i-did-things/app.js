@@ -14,10 +14,22 @@
 // JSON.stringify our array when saving, and JSON.parse when reading.
 const STORAGE_KEY = "lidt_tasks";
 const CARRY_DISMISS_KEY = "lidt_carry_dismissed"; // tracks which weeks user dismissed the banner for
-const MASCOT_KEY = "lidt_mascot";                  // the user's chosen support animal (set in Page 2)
+const MASCOT_KEY = "lidt_mascot";                  // the user's chosen support animal (set on Page 4)
+
+// Support mascots offered on the Choose Your Animal page (Page 4).
+// Each entry maps to assets/mascots/<id>.png. Tint is the pastel
+// fill class applied to the tile background.
+const MASCOTS = [
+  { id: "done-duck",     name: "Done Duck",     tagline: "Invisible effort counts.",       tint: "tile-yellow" },
+  { id: "focus-frog",    name: "Focus Frog",    tagline: "Sit. Stare. Stay with it.",      tint: "tile-green"  },
+  { id: "task-raccoon",  name: "Task Raccoon",  tagline: "Collects every little win.",     tint: "tile-beige"  },
+  { id: "tiny-tortoise", name: "Tiny Tortoise", tagline: "Slow is still moving.",          tint: "tile-mint"   },
+  { id: "brain-bee",     name: "Brain Bee",     tagline: "Busy in all directions.",        tint: "tile-cream"  },
+  { id: "star-snail",    name: "Star Snail",    tagline: "Every step is a star moment.",   tint: "tile-lilac"  },
+];
 
 // Views that take over the whole screen and hide the header + bottom nav.
-const ONBOARDING_VIEWS = new Set(["welcome", "choose"]);
+const ONBOARDING_VIEWS = new Set(["welcome", "signup", "signin", "choose"]);
 
 const DAY_NAMES_FULL  = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_NAMES_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -31,8 +43,9 @@ const PRIORITY_LABEL = { high: "🔴 High", mid: "🟡 Mid", low: "🟢 Low" };
 // One object holds everything the UI needs. When it changes, we re-render.
 const state = {
   tasks: [],           // array of task objects, see data shape in README
-  activeView: "today", // which of the 4 views is showing
+  activeView: "today", // which view is showing
   selectedDay: null,   // which day is selected in the Week view (0-6)
+  chosenMascot: localStorage.getItem(MASCOT_KEY) || null, // user's pick from Page 4
 };
 
 // ---------- 3. STORAGE HELPERS ----------------------------------
@@ -283,6 +296,54 @@ function renderWeekView() {
   });
 }
 
+// ---------- CHOOSE YOUR ANIMAL (Page 4) -------------------------
+// Renders the 2-column grid of mascot tiles plus the bottom preview
+// chip. The current selection lives on state.chosenMascot and is
+// re-rendered on every click.
+function renderChooseView() {
+  const grid = document.getElementById("mascotGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  MASCOTS.forEach(m => {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = `mascot-tile ${m.tint}`;
+    tile.dataset.mascot = m.id;
+    if (state.chosenMascot === m.id) tile.classList.add("is-selected");
+    tile.innerHTML = `
+      <span class="mascot-tile-check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </span>
+      <img class="mascot-tile-img" src="assets/mascots/${m.id}.png" alt="${m.name}">
+      <span class="mascot-tile-name">${m.name}</span>
+    `;
+    tile.addEventListener("click", () => {
+      state.chosenMascot = m.id;
+      render();
+    });
+    grid.appendChild(tile);
+  });
+
+  // Preview chip + Continue button reflect the current selection.
+  const preview     = document.getElementById("choosePreview");
+  const previewImg  = document.getElementById("choosePreviewImg");
+  const previewName = document.getElementById("choosePreviewName");
+  const previewTag  = document.getElementById("choosePreviewTagline");
+  const continueBtn = document.getElementById("chooseContinue");
+  const chosen = MASCOTS.find(m => m.id === state.chosenMascot);
+  if (chosen) {
+    preview.hidden = false;
+    previewImg.src = `assets/mascots/${chosen.id}.png`;
+    previewImg.alt = chosen.name;
+    previewName.textContent = chosen.name;
+    previewTag.textContent = ` — ${chosen.tagline}`;
+    continueBtn.disabled = false;
+  } else {
+    preview.hidden = true;
+    continueBtn.disabled = true;
+  }
+}
+
 function renderTodayView() {
   const today = new Date().getDay();
   const list = document.getElementById("todayList");
@@ -439,6 +500,9 @@ function render() {
   renderCarryBanner();
   switch (state.activeView) {
     case "welcome":  /* static markup, nothing to re-render yet */ break;
+    case "signup":   /* static markup, no dynamic rendering yet */ break;
+    case "signin":   /* static markup, no dynamic rendering yet */ break;
+    case "choose":   renderChooseView(); break;
     case "week":     renderWeekView(); break;
     case "today":    renderTodayView(); break;
     case "add":      renderAddView(); break;
@@ -477,15 +541,70 @@ document.getElementById("taskDay").addEventListener("change", (e) => {
 // Animal) doesn't exist yet, so until it lands we drop the user on
 // Today after dismissing welcome — the welcome won't appear again
 // because we mark it dismissed in localStorage.
+// Welcome → Sign Up (new users) / Sign In (returning users).
 document.getElementById("welcomeStart").addEventListener("click", () => {
-  // Once Page 2 is built, change "today" below to "choose".
-  localStorage.setItem("lidt_welcome_seen", "1");
-  setView("today");
+  setView("signup");
+});
+document.getElementById("welcomeContinue").addEventListener("click", () => {
+  setView("signin");
 });
 document.getElementById("welcomeSignIn").addEventListener("click", (e) => {
-  // Sign-in is parked until the backend phase. Don't follow the href.
   e.preventDefault();
-  alert("Sign-in is coming with the backend (Phase 4 in the roadmap).");
+  setView("signin");
+});
+
+// Auth pages — every "submit" / "guest" button marks onboarding
+// done and drops the user into the Choose Your Animal page. Real
+// auth lands with the backend (Phase 4).
+function finishOnboarding() {
+  localStorage.setItem("lidt_welcome_seen", "1");
+  setView("choose");
+}
+document.getElementById("signupForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  finishOnboarding();
+});
+document.getElementById("signupGuest").addEventListener("click", finishOnboarding);
+document.getElementById("signupToSignin").addEventListener("click", (e) => {
+  e.preventDefault();
+  setView("signin");
+});
+
+document.getElementById("signinForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  finishOnboarding();
+});
+document.getElementById("signinGuest").addEventListener("click", finishOnboarding);
+document.getElementById("signinToSignup").addEventListener("click", (e) => {
+  e.preventDefault();
+  setView("signup");
+});
+document.getElementById("signinForgot").addEventListener("click", (e) => {
+  e.preventDefault();
+  alert("Password reset is coming with the backend (Phase 4 in the roadmap).");
+});
+
+// Password show/hide toggle. Any element with [data-toggle-pw="<inputId>"]
+// flips that input between password and text.
+document.querySelectorAll("[data-toggle-pw]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const input = document.getElementById(btn.dataset.togglePw);
+    if (!input) return;
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    btn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  });
+});
+
+// Choose Your Animal — back goes to welcome; Continue saves the
+// pick and advances to Today (eventually Page 5: This Week).
+document.getElementById("chooseBack").addEventListener("click", () => {
+  setView("welcome");
+});
+document.getElementById("chooseContinue").addEventListener("click", () => {
+  if (!state.chosenMascot) return;
+  localStorage.setItem(MASCOT_KEY, state.chosenMascot);
+  setView("today");
 });
 
 // ---------- 13. SERVICE WORKER REGISTRATION ---------------------
@@ -503,7 +622,15 @@ state.tasks = loadTasks();
 
 // First-time visitor (no mascot picked, welcome not yet dismissed) lands
 // on the welcome screen. Returning users skip straight to Today.
+// Onboarding gate: pick the right starting view based on how far
+// the user has progressed.
+//   - never seen welcome → welcome
+//   - seen welcome but no mascot picked → choose
+//   - mascot picked → today (the regular app)
 const hasSeenWelcome = localStorage.getItem("lidt_welcome_seen") === "1";
 const hasMascot      = !!localStorage.getItem(MASCOT_KEY);
-const initialView    = (hasSeenWelcome || hasMascot) ? "today" : "welcome";
+let initialView;
+if (hasMascot)             initialView = "today";
+else if (hasSeenWelcome)   initialView = "choose";
+else                       initialView = "welcome";
 setView(initialView);

@@ -307,6 +307,25 @@ input, select, textarea, button { font-family: inherit; font-size: 1rem; }
 }
 .btn-primary:active { transform: scale(0.98); }
 
+/* Secondary pill — same shape as primary but quieter.
+   Used for paired actions where one is the bold CTA and the other
+   is "I want this too, just less loudly." Welcome screen uses it
+   for Continue (next to Get Started). */
+.btn-secondary {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-top: 0;
+  cursor: pointer;
+}
+.btn-secondary:active { transform: scale(0.98); }
+
 /* Stats / Progress view */
 .stat-card {
   background: var(--surface);
@@ -514,7 +533,8 @@ body.is-onboarding .app {
   margin: 0 -28px -8px;
 }
 
-.welcome-actions .btn-primary {
+.welcome-actions .btn-primary,
+.welcome-actions .btn-secondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -525,6 +545,9 @@ body.is-onboarding .app {
 .welcome-actions .btn-icon {
   width: 20px;
   height: 20px;
+  /* Done Duck yellow — ties the CTA into the mascot palette
+     and pops nicely against the deep teal pill. */
+  color: var(--mascot-yellow);
 }
 
 .welcome-signin {
@@ -539,6 +562,488 @@ body.is-onboarding .app {
   text-decoration: none;
 }
 .welcome-signin a:hover { text-decoration: underline; }
+
+/* ============================================================
+   AUTH PAGES (Sign Up + Sign In) — shared layout
+   ----------------------------------------------------------------
+   Same painted hero at top (signup-bg.png) for both pages; DOM
+   overlays the title, subtitle, speech bubble, and form below.
+   See index.html for view structure. Hide the app header + nav
+   via the existing body.is-onboarding rule.
+   ============================================================ */
+/* The base .view rule sets display:none and .view.is-active sets
+   display:block — both have higher specificity than plain .view-auth.
+   We re-target with the same specificity to win the cascade. */
+.view-auth {
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+.view-auth.is-active {
+  display: flex;
+}
+
+/* Header — title + subtitle. Lives ABOVE the painted hero so the
+   illustration never bleeds behind text. Centered to match wireframe. */
+.auth-header {
+  text-align: center;
+  padding: 32px 24px 12px;
+}
+.auth-title {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: clamp(1.85rem, 7.4vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+.auth-subtitle {
+  margin: 10px auto 0;
+  max-width: 320px;
+  color: var(--accent);
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.inline-glyph {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-left: 2px;
+}
+
+/* Painted illustration block — sized to fit the bg image's portrait
+   aspect ratio so it fills exactly with no whitespace strips.
+   The signup-bg.png is roughly 1:1.6 (portrait); we cap height at
+   46vh on mobile so the form stays visible without scrolling. */
+.auth-hero {
+  position: relative;
+  width: 100%;
+  height: 46vh;
+  max-height: 360px;
+  background-color: var(--bg);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: contain;
+}
+.auth-hero[data-bg="signup"] {
+  background-image: url("assets/backgrounds/signup-bg.png");
+}
+.inline-glyph {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-left: 2px;
+}
+
+/* Speech bubble — overlays the painted scene. Positioned near
+   the upper-right of the hero so it reads as coming from the
+   duck's beak. Tweak top/right per page if alignment drifts. */
+.speech-bubble {
+  position: absolute;
+  top: 32%;
+  right: 8%;
+  background: #fff;
+  border-radius: 16px;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: 0 4px 14px rgba(20, 30, 40, 0.10);
+  z-index: 2;
+  max-width: 55%;
+}
+.speech-bubble[data-tail="down-left"]::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  bottom: -8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 9px solid #fff;
+  filter: drop-shadow(0 2px 1px rgba(20, 30, 40, 0.06));
+}
+
+/* Form section — sits below the painted hero on the cream bg. */
+.auth-form {
+  flex: 1;
+  padding: 8px 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Pill-shaped input row with a circular pastel icon on the left
+   and an optional trailing button (e.g. password eye toggle). */
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 16px 8px 8px;
+  box-shadow: 0 1px 2px rgba(20, 30, 40, 0.04);
+}
+.field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.field-icon svg { width: 18px; height: 18px; }
+.field-icon.icon-name { background: var(--life-health-bg);   color: var(--life-health-ink); }
+.field-icon.icon-mail { background: var(--life-creative-bg); color: var(--life-creative-ink); }
+.field-icon.icon-lock { background: var(--life-learning-bg); color: var(--life-learning-ink); }
+.field-icon.icon-star { background: #fff1c0;                 color: #c08a18; }
+.field-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  padding: 8px 0;
+  min-width: 0;
+}
+.field-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+.field-trailing {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+}
+.field-trailing svg { width: 20px; height: 20px; }
+.field-trailing:hover { color: var(--text); }
+
+/* "I'd like gentle reminders…" row on Sign Up. */
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.4;
+  padding: 4px 6px;
+}
+.checkbox-row input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.checkbox-row a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.checkbox-row a:hover { text-decoration: underline; }
+
+/* Remember me / Forgot password row on Sign In. */
+.options-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.92rem;
+  padding: 0 6px;
+}
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.remember-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.forgot-link {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Auth-page btn-primary: keep the welcome screen's yellow arrow
+   on the deep teal pill. We re-declare here so it matches even
+   if .welcome-actions selector doesn't reach this view. */
+.auth-form .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.auth-form .btn-primary .btn-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--mascot-yellow);
+}
+.auth-form .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+}
+
+/* Footer link below buttons ("Already have an account? Sign in"
+   and "New here? Create account"). */
+.auth-foot {
+  text-align: center;
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.auth-foot a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 768px) {
+  .view-auth {
+    align-items: center;
+  }
+  .auth-header,
+  .auth-hero,
+  .auth-form {
+    width: 100%;
+    max-width: 520px;
+  }
+  .auth-hero {
+    height: 320px;
+    max-height: 320px;
+  }
+}
+
+/* ============================================================
+   PAGE 4 — CHOOSE YOUR SUPPORT ANIMAL
+   ----------------------------------------------------------------
+   Six mascot tiles in a 2-column grid. Each tile is a pastel card
+   with a mascot illustration on top and a name label below. JS
+   renders the grid from a MASCOTS array, applies .is-selected on
+   click, and lights up the Continue button when a tile is picked.
+   ============================================================ */
+.view-choose {
+  flex-direction: column;
+  background: var(--bg);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 16px 18px 24px;
+}
+.view-choose.is-active { display: flex; }
+
+.choose-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px 1fr 80px;
+  align-items: start;
+  column-gap: 8px;
+  padding: 4px 2px 6px;
+}
+.icon-btn.back-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--text);
+  align-self: start;
+  margin-top: 4px;
+}
+.icon-btn.back-btn svg { width: 18px; height: 18px; }
+.icon-btn.back-btn:hover { background: var(--surface-2); }
+
+.choose-titlewrap {
+  min-width: 0;
+}
+.choose-title {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: clamp(1.55rem, 6.4vw, 2rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+.choose-subtitle {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  max-width: 32ch;
+}
+.choose-decor {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-top: -6px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.mascot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+
+.mascot-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px 12px;
+  border: 2px solid transparent;
+  border-radius: 18px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 160ms ease, border-color 160ms ease;
+  box-shadow: 0 1px 2px rgba(20, 30, 40, 0.04);
+  text-align: center;
+  font: inherit;
+  color: inherit;
+}
+.mascot-tile:hover { transform: translateY(-1px); }
+.mascot-tile:active { transform: scale(0.99); }
+
+/* Each tile gets a soft pastel fill via a tint class. */
+.mascot-tile.tile-yellow { background: #fdf3d4; }
+.mascot-tile.tile-green  { background: #d6ebc7; }
+.mascot-tile.tile-beige  { background: #ece2cf; }
+.mascot-tile.tile-mint   { background: #def0d8; }
+.mascot-tile.tile-cream  { background: #fde8c8; }
+.mascot-tile.tile-lilac  { background: #e7dff3; }
+
+.mascot-tile-img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+.mascot-tile-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Selected state — green border + small checkmark badge. */
+.mascot-tile.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(31, 107, 92, 0.18);
+}
+.mascot-tile-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: none;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(31, 107, 92, 0.35);
+}
+.mascot-tile-check svg { width: 13px; height: 13px; }
+.mascot-tile.is-selected .mascot-tile-check { display: grid; }
+
+/* Footer — selected preview chip + Continue button. */
+.choose-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.choose-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 0;
+}
+.choose-preview-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.choose-preview-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-size: 0.92rem;
+}
+.choose-preview-text strong {
+  font-weight: 700;
+  color: var(--text);
+}
+.choose-preview-text span {
+  color: var(--text-muted);
+}
+
+/* Continue button — disabled state is muted; enabled is the
+   normal teal pill with the yellow arrow. */
+.view-choose .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 0;
+}
+.view-choose .btn-primary[disabled] {
+  background: #b9c8c4;
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.view-choose .btn-primary .btn-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--mascot-yellow);
+}
+.view-choose .btn-primary[disabled] .btn-icon {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+@media (min-width: 768px) {
+  .view-choose {
+    align-items: center;
+  }
+  .view-choose .choose-header,
+  .view-choose .mascot-grid,
+  .view-choose .choose-footer {
+    width: 100%;
+    max-width: 520px;
+  }
+}
 
 @media (min-width: 768px) {
   body.is-onboarding .app {

@@ -83,11 +83,157 @@
                 <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
               </svg>
             </button>
+            <button class="btn-secondary" id="welcomeContinue">
+              <span>Continue</span>
+            </button>
             <p class="welcome-signin">
               Already have an account? <a href="#" id="welcomeSignIn">Sign in</a>
             </p>
           </footer>
         </div>
+      </section>
+
+      <!-- SIGN UP VIEW (Page 2) -------------------------------------
+           Reached from Welcome → Get Started. Painted hero at top
+           (assets/backgrounds/signup-bg.png — duck + decorations).
+           Title, subtitle, speech bubble, form, and buttons are all
+           DOM overlaid on top. Same bg image is reused on Sign In. -->
+      <section class="view view-onboarding view-auth view-signup" id="view-signup">
+        <header class="auth-header">
+          <h1 class="auth-title">Create your account</h1>
+          <p class="auth-subtitle">
+            Just the basics, then we'll help you get started.
+            <svg class="inline-glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color:#9b8cd6"><path d="M12 21s-7-4.5-9.5-9C0.7 8.4 3 4 6.5 4c1.9 0 3.5 1 4.5 2.5C12 5 13.6 4 15.5 4 19 4 21.3 8.4 19.5 12 17 16.5 12 21 12 21z"/></svg>
+          </p>
+        </header>
+        <div class="auth-hero" data-bg="signup">
+          <div class="speech-bubble" data-tail="down-left">Let's get to know you!</div>
+        </div>
+        <form class="auth-form" id="signupForm" novalidate>
+          <div class="field">
+            <span class="field-icon icon-name">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </span>
+            <input type="text" class="field-input" id="signupName" placeholder="Full name" autocomplete="name">
+          </div>
+          <div class="field">
+            <span class="field-icon icon-mail">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </span>
+            <input type="email" class="field-input" id="signupEmail" placeholder="Email address" autocomplete="email">
+          </div>
+          <div class="field">
+            <span class="field-icon icon-lock">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
+            <input type="password" class="field-input" id="signupPassword" placeholder="Create password" autocomplete="new-password">
+            <button type="button" class="field-trailing" data-toggle-pw="signupPassword" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="field">
+            <span class="field-icon icon-star">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.95 5.98 6.6.96-4.78 4.66 1.13 6.58L12 17.6l-5.9 3.08L7.23 14.1 2.45 9.44l6.6-.96L12 2.5z"/></svg>
+            </span>
+            <input type="text" class="field-input" id="signupNickname" placeholder="What should we call you? (optional)">
+          </div>
+          <label class="checkbox-row">
+            <input type="checkbox" id="signupAgree">
+            <span>I'd like gentle reminders and accept the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+              <svg class="inline-glyph" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color:var(--mascot-yellow)"><path d="M12 21s-7-4.5-9.5-9C0.7 8.4 3 4 6.5 4c1.9 0 3.5 1 4.5 2.5C12 5 13.6 4 15.5 4 19 4 21.3 8.4 19.5 12 17 16.5 12 21 12 21z"/></svg>
+            </span>
+          </label>
+          <button type="submit" class="btn-primary">
+            <span>Create account</span>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
+            </svg>
+          </button>
+          <button type="button" class="btn-secondary" id="signupGuest"><span>Continue as guest</span></button>
+          <p class="auth-foot">Already have an account? <a href="#" id="signupToSignin">Sign in</a></p>
+        </form>
+      </section>
+
+      <!-- SIGN IN VIEW (Page 3) -------------------------------------
+           Reached from Welcome → Continue, Welcome → Sign in link,
+           or Sign Up → Sign in link. Shares signup-bg.png — same
+           painted scene, different DOM text. -->
+      <section class="view view-onboarding view-auth view-signin" id="view-signin">
+        <header class="auth-header">
+          <h1 class="auth-title">Welcome back</h1>
+          <p class="auth-subtitle">Sign in and let's keep track of your little wins.</p>
+        </header>
+        <div class="auth-hero" data-bg="signup">
+          <div class="speech-bubble" data-tail="down-left">Ready to do things?</div>
+        </div>
+        <form class="auth-form" id="signinForm" novalidate>
+          <div class="field">
+            <span class="field-icon icon-mail">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </span>
+            <input type="email" class="field-input" id="signinEmail" placeholder="Email address" autocomplete="email">
+          </div>
+          <div class="field">
+            <span class="field-icon icon-lock">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
+            <input type="password" class="field-input" id="signinPassword" placeholder="Password" autocomplete="current-password">
+            <button type="button" class="field-trailing" data-toggle-pw="signinPassword" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="options-row">
+            <label class="remember-row">
+              <input type="checkbox" id="signinRemember">
+              <span>Remember me</span>
+            </label>
+            <a href="#" id="signinForgot" class="forgot-link">Forgot password?</a>
+          </div>
+          <button type="submit" class="btn-primary">
+            <span>Sign in</span>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
+            </svg>
+          </button>
+          <button type="button" class="btn-secondary" id="signinGuest"><span>Continue as guest</span></button>
+          <p class="auth-foot">New here? <a href="#" id="signinToSignup">Create account</a></p>
+        </form>
+      </section>
+
+      <!-- CHOOSE VIEW (Page 4 — Your Animal) -------------------------
+           User picks a support mascot. Tiles are rendered by JS from
+           the MASCOTS array in app.js. Selected tile gets is-selected
+           which paints the border + checkmark badge. Continue enables
+           once a tile is selected. -->
+      <section class="view view-onboarding view-choose" id="view-choose">
+        <header class="choose-header">
+          <button class="icon-btn back-btn" id="chooseBack" aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+          </button>
+          <div class="choose-titlewrap">
+            <h1 class="choose-title">Choose your<br>support animal</h1>
+            <p class="choose-subtitle">Pick the little companion that best understands your productivity chaos.</p>
+          </div>
+          <img class="choose-decor" src="assets/mascots/done-duck.png" alt="" aria-hidden="true">
+        </header>
+        <div class="mascot-grid" id="mascotGrid"><!-- populated by JS --></div>
+        <footer class="choose-footer">
+          <div class="choose-preview" id="choosePreview" hidden>
+            <img class="choose-preview-img" id="choosePreviewImg" alt="" aria-hidden="true">
+            <div class="choose-preview-text">
+              <strong id="choosePreviewName"></strong>
+              <span id="choosePreviewTagline"></span>
+            </div>
+          </div>
+          <button class="btn-primary" id="chooseContinue" disabled>
+            <span>Continue</span>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
+            </svg>
+          </button>
+        </footer>
       </section>
 
       <!-- WEEK VIEW ----------------------------------------------- -->
