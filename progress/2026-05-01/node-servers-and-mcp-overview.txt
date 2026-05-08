@@ -1,0 +1,13 @@
+Yesterday was a learning session built around three concepts: Node.js, servers, and MCP. Here's what got done and what you now understand.
+
+First, you verified Node.js was installed by running "node --version". Node.js is a program that lets your computer run JavaScript outside of a browser. Think of JavaScript as a language that originally only got spoken inside one specific building — the browser. Node.js is what lets that same language be spoken anywhere, including on your own machine. Every npm command you'll ever run is powered by Node.js behind the scenes, and almost every modern web tool — Claude Code, npm, frameworks like Next.js — is built on top of it.
+
+Then you ran "npm run dev" to start the uigen app. Behind the scenes, Node.js fired up a small server on your own computer at http://localhost:3000. The word "localhost" literally means "this computer" — so your machine was acting as both the kitchen (the server) and the customer (the browser) at the same time. This is what's called a development server: it only runs while your terminal is open, and only you can reach it. The way to think of any server is like a restaurant kitchen — it runs in the background, waits for orders (requests), and sends out food (responses). The customer never sees the kitchen, they just send orders and receive food.
+
+Then you added a completely different kind of server with "claude mcp add playwright". This is an MCP server — and it's important to understand it has nothing to do with serving web pages. An MCP server runs in the background and acts as a middleman so Claude can communicate with external tools. In this case it connected Claude to Playwright, a browser-automation tool. So now Claude can actually see and interact with web pages.
+
+So you finished the session with two distinct things running in totally different ways. Your terminal runs Node.js, Node.js runs the uigen app, the app lives at localhost:3000, and your browser connects to it. Separately, Claude Code is connected to the Playwright MCP server, which controls a browser, which lets Claude see what's on screen.
+
+The quick way to remember the difference: a local dev server is started with npm run dev, runs your app at localhost:3000, and dies when you close the terminal. An MCP server is added with claude mcp add, doesn't serve a website at all, and just gives Claude extra abilities. Same word, totally different jobs.
+
+Where things stand: Node.js verified, uigen running on localhost:3000, Playwright wired up to Claude Code, and a working mental model of how all three pieces relate. Next time you want to keep building on uigen, just run npm run dev again from its folder and you're back in business.

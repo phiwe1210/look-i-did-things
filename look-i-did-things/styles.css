@@ -1,0 +1,665 @@
+/* ============================================================
+   LOOK, I DID THINGS — STYLES
+   ----------------------------------------------------------------
+   Extracted from V1's inline <style> block.
+   Edit the design tokens in :root to re-skin the whole app.
+   ============================================================ */
+
+/* ============================================================
+   DESIGN TOKENS — V2 light palette
+   ----------------------------------------------------------------
+   Change these to re-skin the whole app. CSS custom properties
+   are referenced everywhere below using var(--name). Edit once,
+   update everywhere.
+
+   V2 colors are pulled from the wireframe: warm cream background,
+   white cards, dark teal text, deep teal CTA, and seven soft
+   pastel accents — one per Life Area — for pills and bars.
+   ============================================================ */
+:root {
+  /* Surfaces */
+  --bg:            #fbf6e9;   /* warm cream page background  */
+  --surface:       #ffffff;   /* card / sheet background     */
+  --surface-2:     #f5f0e1;   /* subtle inset / chip bg      */
+  --border:        #ece4cf;   /* warm beige hairline         */
+
+  /* Text */
+  --text:          #1d3a35;   /* near-black with teal warmth */
+  --text-muted:    #7a8480;   /* muted paragraph / labels    */
+
+  /* Brand / CTA */
+  --accent:        #1f6b5c;   /* deep teal — primary buttons */
+  --accent-soft:   rgba(31, 107, 92, 0.10);
+  --accent-ink:    #ffffff;   /* text color on top of accent */
+  --mascot-yellow: #f4c542;   /* Done Duck yellow            */
+
+  /* Priority (kept from V1 for the existing transitional UI;
+     V2 uses arrow-icon pills, see Page 4 task) */
+  --priority-high: #d9534f;
+  --priority-mid:  #e8a93b;
+  --priority-low:  #2e9e6e;
+
+  /* Life areas — soft pastels matching the wireframe pills.
+     Each has a fill (background) and an ink (text on top). */
+  --life-creative-bg:   #e8d8f5;  --life-creative-ink:   #6e4ba6;
+  --life-health-bg:     #cfe8d6;  --life-health-ink:     #2f7a4a;
+  --life-learning-bg:   #d1e3f3;  --life-learning-ink:   #2a5d8c;
+  --life-admin-bg:      #fbe0c2;  --life-admin-ink:      #a35e1a;
+  --life-work-bg:       #f6cfca;  --life-work-ink:       #a23e34;
+  --life-social-bg:     #f5d2df;  --life-social-ink:     #a14668;
+  --life-rest-bg:       #f8e3a5;  --life-rest-ink:       #8a6510;
+
+  /* Shape & shadow */
+  --radius:        16px;
+  --radius-sm:     10px;
+  --radius-lg:     22px;
+
+  --shadow-card:   0 1px 2px rgba(20, 30, 40, 0.04), 0 6px 18px rgba(20, 30, 40, 0.06);
+  --shadow-float:  0 6px 16px rgba(31, 107, 92, 0.35);
+
+  /* Typography */
+  --font-display:  "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-body:     "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+/* Reset + base */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100vh;
+  /* Reserve space below for the bottom nav (with extra room for the
+     raised "+" button that sits above the nav baseline). */
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea, button { font-family: inherit; font-size: 1rem; }
+
+/* ============================================================
+   LAYOUT — mobile-first
+   ============================================================ */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* Header (sticky so the week label stays visible while scrolling) */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.header-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); }
+.week-label { color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* Carry-over banner (shows only when previous week has incomplete tasks) */
+.carry-banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.carry-banner p { margin: 0; font-size: 0.9rem; }
+.carry-banner button {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.carry-banner .dismiss {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 4px 8px;
+}
+
+/* Day tabs (horizontal scroll on mobile) */
+.day-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  scrollbar-width: none;
+}
+.day-tabs::-webkit-scrollbar { display: none; }
+.day-tab {
+  flex: 0 0 auto;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  min-width: 64px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.day-tab.is-today { border-color: var(--accent); color: var(--accent); }
+.day-tab.is-active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.day-tab .count {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* Section heading (used inside views) */
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  margin: 0 0 12px 0;
+}
+.section-sub { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 16px; }
+
+/* Progress bar (used in many places) */
+.progress {
+  width: 100%;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0 16px;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.progress-fill.high { background: var(--priority-high); }
+.progress-fill.mid  { background: var(--priority-mid); }
+.progress-fill.low  { background: var(--priority-low); }
+
+/* Task card */
+.task {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+  transition: opacity 0.2s, transform 0.1s;
+}
+.task.priority-high { border-left-color: var(--priority-high); }
+.task.priority-mid  { border-left-color: var(--priority-mid); }
+.task.priority-low  { border-left-color: var(--priority-low); }
+.task.done { opacity: 0.55; }
+.task.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+
+/* Circular checkbox */
+.checkbox {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  border: 2px solid var(--text-muted);
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  margin-top: 2px;
+  transition: all 0.15s;
+}
+.checkbox.is-checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.checkbox.is-checked::after {
+  content: "";
+  width: 6px; height: 10px;
+  border: solid var(--accent-ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.task-body { flex: 1; min-width: 0; }
+.task-text { font-size: 0.97rem; word-break: break-word; }
+.task-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.task-meta .pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.task .delete {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding: 0 4px;
+  opacity: 0.6;
+}
+.task .delete:hover { opacity: 1; color: var(--priority-high); }
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+.empty .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+/* Add form */
+.form-group { margin-bottom: 12px; }
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.input, .select, .textarea {
+  width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  outline: none;
+}
+.input:focus, .select:focus, .textarea:focus { border-color: var(--accent); }
+.textarea { resize: vertical; min-height: 80px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  border-radius: 999px;
+  padding: 16px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-top: 8px;
+  box-shadow: var(--shadow-float);
+}
+.btn-primary:active { transform: scale(0.98); }
+
+/* Stats / Progress view */
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.stat-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.9rem; margin-bottom: 4px;
+}
+.stat-row .label { color: var(--text-muted); }
+.stat-row .value { font-weight: 600; }
+.day-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+  align-items: end;
+  height: 100px;
+}
+.day-bar {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  height: 100%;
+}
+.day-bar .bar {
+  width: 100%;
+  background: var(--surface-2);
+  border-radius: 4px;
+  flex: 1;
+  display: flex; align-items: flex-end;
+}
+.day-bar .bar-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: height 0.3s ease;
+}
+.day-bar .name { font-size: 0.7rem; color: var(--text-muted); }
+
+/* Celebration banner (Today view, all complete) */
+.celebrate {
+  background: linear-gradient(135deg, var(--accent-soft), transparent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.celebrate .emoji { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+.celebrate h3 { color: var(--accent); margin-bottom: 4px; }
+
+/* Bottom navigation — 5 slots, with the middle slot being a
+   floating teal "+" button raised above the nav surface. */
+.bottom-nav {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+  z-index: 20;
+  box-shadow: 0 -2px 14px rgba(20, 30, 40, 0.04);
+}
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+.nav-btn .icon { font-size: 1.25rem; line-height: 1; }
+.nav-btn.is-active { color: var(--accent); }
+
+/* Floating "+" — sits in the middle slot, raised, circular. */
+.nav-btn.nav-add {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  margin: -28px auto 0;       /* lift above the nav baseline */
+  box-shadow: var(--shadow-float);
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-weight: 700;
+}
+.nav-btn.nav-add .icon {
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--accent-ink);
+}
+.nav-btn.nav-add.is-active { color: var(--accent-ink); background: var(--accent); }
+.nav-btn.nav-add:active { transform: scale(0.95); }
+
+/* View visibility — only one view shows at a time */
+.view { display: none; }
+.view.is-active { display: block; }
+
+/* Onboarding views (Welcome, Choose Animal) take over the screen.
+   When body.is-onboarding is set, the header and bottom nav are hidden
+   and content is allowed to fill the viewport. JS toggles that class. */
+body.is-onboarding {
+  padding-bottom: 0;
+}
+body.is-onboarding .header,
+body.is-onboarding .bottom-nav,
+body.is-onboarding .carry-banner {
+  display: none !important;
+}
+body.is-onboarding .app {
+  padding: 0;
+  max-width: none;
+}
+
+/* ============================================================
+   PAGE 1 — WELCOME
+   ----------------------------------------------------------------
+   The mascot illustration is a full-bleed background. The title sits
+   at the top in the sky region, the CTA sits at the bottom over the
+   grass region. No image element is needed in the markup — it's
+   pulled in via background-image. Mobile-first; centers on desktop.
+   ============================================================ */
+.view-onboarding {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.view-welcome {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-image: url("assets/backgrounds/welcome-bg.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-color: #cbe6f3;  /* sky tone — fills any letterbox area */
+  overflow: hidden;
+}
+
+.welcome-content {
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: clamp(28px, 7vh, 64px) 28px clamp(28px, 5vh, 48px);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.welcome-header {
+  /* Soft white halo behind the text so it stays readable against the
+     painted sky regardless of cloud placement. */
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 8.5vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.welcome-tagline {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+  max-width: 26ch;
+  margin: 12px 0 0;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  /* A soft white veil behind the action area lifts the button off
+     the painted grass so it's the obvious tap target. */
+  padding: 16px 8px 6px;
+  background: linear-gradient(180deg, rgba(251, 246, 233, 0) 0%, rgba(251, 246, 233, 0.72) 35%, rgba(251, 246, 233, 0.92) 100%);
+  border-radius: 24px 24px 0 0;
+  margin: 0 -28px -8px;
+}
+
+.welcome-actions .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 0;
+  width: min(380px, 100%);
+}
+.welcome-actions .btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.welcome-signin {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+}
+.welcome-signin a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.welcome-signin a:hover { text-decoration: underline; }
+
+@media (min-width: 768px) {
+  body.is-onboarding .app {
+    display: block;
+    padding: 0;
+  }
+  body.is-onboarding .views-wrapper {
+    grid-column: 1 / -1;
+  }
+  .welcome-content {
+    max-width: 520px;
+    padding: 64px 36px 40px;
+  }
+}
+
+/* ============================================================
+   DESKTOP LAYOUT — kicks in at 768px and above
+   The bottom nav becomes a left sidebar, the week view
+   shows all 7 days in a grid, and the layout widens.
+   ============================================================ */
+@media (min-width: 768px) {
+  body { padding-bottom: 0; }
+  .app {
+    max-width: 1100px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 32px;
+    padding: 24px 32px;
+  }
+  .header {
+    grid-column: 1 / -1;
+    position: sticky;
+    top: 0;
+    padding: 16px 0;
+  }
+  .carry-banner { grid-column: 1 / -1; }
+  .bottom-nav {
+    position: static;
+    grid-column: 1;
+    align-self: start;
+    flex-direction: column;
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    gap: 4px;
+  }
+  .nav-btn {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    border-radius: var(--radius-sm);
+    text-align: left;
+  }
+  .nav-btn.is-active { background: var(--accent-soft); }
+
+  /* On desktop the floating + flattens into a normal row, but keeps
+     the teal pill look so it still reads as the primary action. */
+  .nav-btn.nav-add {
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-sm);
+    margin: 0;
+    padding: 10px 14px;
+    box-shadow: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .nav-btn.nav-add .icon { font-size: 1.1rem; }
+  .nav-btn.nav-add::after { content: "Add"; font-size: 0.95rem; font-weight: 700; }
+  .views-wrapper { grid-column: 2; min-width: 0; }
+
+  /* Week view becomes a 7-column grid (one column per day) */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .week-grid .day-column {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    min-height: 200px;
+  }
+  .week-grid .day-column h3 {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+    font-family: var(--font-body);
+    font-weight: 600;
+  }
+  .week-grid .day-column.is-today { border-color: var(--accent); }
+  .week-grid .day-column .task {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+  .week-grid .day-column .task-text { font-size: 0.85rem; }
+  .week-grid .day-column .task-meta { display: none; }
+
+  /* Hide the horizontal day tabs on desktop — we use the grid instead */
+  .day-tabs { display: none; }
+
+  /* Add view: form on left, this-week list on right */
+  .add-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* Progress view: stats in a 2-column grid */
+  .progress-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .progress-grid .day-bars-card { grid-column: 1 / -1; }
+}

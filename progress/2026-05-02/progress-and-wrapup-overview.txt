@@ -1,0 +1,27 @@
+Here's everything you accomplished today.
+
+1. Renamed the project. FlowWeek is now officially called look-i-did-things, sitting in D:\look-i-did-things.
+
+2. Installed and configured Git. You already had Git downloaded. We then told Git who you are by setting your name and email — this is what links your saves (commits) to your GitHub account. The commands you ran were:
+   git config --global user.email "phiwe.mpofu.pm@gmail.com"
+   git config --global user.name "Siwphiwe"
+
+3. Initialized a Git repository. Inside D:\look-i-did-things you ran "git init". This turned your project folder into a Git-tracked repository — Git's brain (the hidden .git folder) now lives inside it.
+
+4. Created a .gitignore. You created a .gitignore file that tells Git to ignore unnecessary files like node_modules/ so they never get uploaded to GitHub.
+
+5. Made your first commit. You staged all your files and saved your first ever snapshot of the project with "git add ." and then 'git commit -m "feat: look-i-did-things v1 - initial commit"'. Git confirmed 12 files were saved — your HTML, icons, service worker, manifest, and more.
+
+6. Created a GitHub repository. You went to github.com and created a new empty repository called look-i-did-things under your account phiwe1210.
+
+7. Connected the local project to GitHub and pushed. You linked your local project to GitHub and uploaded everything by running "git remote add origin https://github.com/phiwe1210/look-i-did-things.git", then "git branch -M main", then "git push -u origin main". Your V1 code is now live and backed up at github.com/phiwe1210/look-i-did-things.
+
+8. Created a V2 branch. With "git checkout -b v2-development" you now have a safe, separate branch where you'll build V2 without ever touching the stable V1 code on main.
+
+On top of all that, you also built yourself a small progress-logging system. There's a progress folder with a README and a template, plus instructions in CLAUDE.md so Claude automatically reads recent progress notes at the start of every session. And you set up a "wrap up session" command that writes these very files for you when you're ready to step away.
+
+We also reorganised the progress folder so each day gets its own subfolder. Today's notes live inside progress/2026-05-02/ — and from now on, every session's files will land in a folder named after the date. Tidier as logs pile up.
+
+Where things stand: Git installed and configured — done. Local repo initialized — done. V1 committed — done. GitHub repo created — done. Code pushed to GitHub — done. V2 branch created — done. Progress logging with per-day folders — done.
+
+Welcome back, future-Phiwe.

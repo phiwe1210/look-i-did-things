@@ -4,13 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**FlowWeek** (rebranding to "Look, I Did Things") is an ADHD-friendly weekly task and attention tracker. It is a **single-file PWA** — no framework, no build step, no backend. The entire app lives in `FlowWeek App/index.html`.
+**Look, I Did Things** 🦆 (formerly **FlowWeek**) is an ADHD-friendly weekly attention tracker. Tagline: *"A silly little app for proving you actually did stuff."* It is a **single-file PWA** — no framework, no build step, no backend. The entire app lives in `look-i-did-things/index.html`.
+
+The problem it solves: for someone with ADHD, the question is rarely *"Did I finish everything?"* — it's *"Where did my energy go?"*, *"Am I neglecting something important?"*, *"Why do I feel like I did nothing even when I did a lot?"* The app helps surface **effort, attention, and balance** — not just completed tasks.
+
+The mascot is **Done Duck** 🦆 — calm above water, paddling hard underneath. A metaphor for invisible effort. Done Duck shows up to celebrate completions. Future versions will let users pick from other support animals (Focus Frog, Task Raccoon, Star Snail, Tiny Tortoise, Brain Bee, Momentum Moth, Checklist Chicken, Goblin Assistant — see README).
 
 ## Running Locally
 
-```sh
-# From the "FlowWeek App" directory:
-python -m http.server 5173
+```bash
+# From the look-i-did-things/ directory:
+python3 -m http.server 5173
+# then open http://localhost:5173
 # or
 npx serve .
 ```
@@ -19,32 +24,171 @@ The service worker only registers on `https://` or `http://localhost`, so always
 
 ## Deployment
 
-Bump `CACHE_VERSION` in `FlowWeek App/service-worker.js` before deploying to force all clients to fetch fresh assets. The manifest and icons are in the same directory.
+Bump `CACHE_VERSION` in `look-i-did-things/service-worker.js` before deploying to force all clients to fetch fresh assets. The manifest and icons are in the same directory. Current icons are placeholder "FW" monograms — swap them out for Done Duck art when branding is ready.
 
 ## Architecture
 
 **Single state object → mutate → save → render.** There is no framework; all reactivity is manual.
 
 - `state` — one object holding all tasks and UI state. Persisted to `localStorage` under key `lidt_tasks`.
-- **Views**: Week View, Today View, Add Task, Progress/Attention Dashboard. All four view containers exist in the DOM simultaneously; active view is toggled via CSS classes.
-- **Week keys**: Tasks are grouped by ISO-8601 week strings (`"2026-W18"`). The `getWeekKey(date)` function is the canonical source for which week a date belongs to.
-- **Task model**: each task has `id`, `title`, `area` (one of 7 life areas), `effort` (Light/Medium/Deep), `status` (Not Started/Started/Done/Moved/Dropped), `weekKey`, and optional carry-over metadata.
+- **Views (4)**: Week View, Today View, Add Task, Attention Dashboard. All four containers exist in the DOM simultaneously; the active one is toggled via CSS classes.
+- **Week keys**: tasks are grouped by ISO-8601 week strings (e.g. `"2026-W18"`). `getWeekKey(date)` walks back to the Sunday at or before the given date and computes the week number — canonical source for which week a task belongs to.
+- **Render flow**: every action (add, toggle, delete, navigate) mutates `state`, calls `saveTasks()`, then calls `render()` which redraws the active view from scratch.
+
+### Task model
+
+```json
+{
+  "id": "task_001",
+  "title": "Work on portfolio homepage",
+  "day": "Tuesday",
+  "lifeArea": "Creative",
+  "priority": "High",
+  "effort": "Deep",
+  "status": "Started",
+  "weekKey": "2026-W18",
+  "createdAt": "2026-05-01",
+  "completedAt": null,
+  "carryOverCount": 1,
+  "carryOverReason": "Too big",
+  "notes": "Break into smaller pieces"
+}
+```
+
+### Task statuses
+
+Five statuses, not a simple checkbox:
+
+| Status | Meaning |
+| --- | --- |
+| Not Started | No progress yet |
+| Started | You touched it — this counts |
+| Done | Completed |
+| Moved | Intentionally moved to another day |
+| Dropped | No longer relevant — closes the loop without guilt |
+
+"Started" matters because beginning a task is real progress for someone with ADHD. "Dropped" matters because not every unfinished task should carry guilt into the next week.
+
+### Attention scoring
+
+```
+Attention Score = Effort Points × Completion Status
+```
+
+- **Effort points**: Light = 1, Medium = 2, Deep = 3
+- **Completion**: Done = 100%, Started = 50%, Not Started or Dropped = 0%
+
+Drives the Life Attention Star Chart on the Attention Dashboard. Gives a more honest picture of where the week went than raw task counts.
+
+### Carry-over reasons
+
+When a task carries over to the next week, the user picks one of these — turning carry-over from a failure signal into a learning signal:
+
+| Reason | Meaning |
+| --- | --- |
+| Too big | Needs to be broken down |
+| Forgot | Needs a reminder or better visibility |
+| Avoided | May be emotionally difficult or unclear |
+| No time | Week was overloaded |
+| Not important | Should be dropped or deprioritised |
 
 ## Design System
 
-CSS custom properties are defined at the top of the `<style>` block in `index.html`. Key tokens:
+CSS custom properties are defined at the top of the `<style>` block in `index.html`. Key tokens (verify against the file before relying on them):
 
 - Primary gold: `#f4a535` / background dark: `#0f0f13`
 - Standard radius: `12px`; small: `8px`
 - Fonts: Playfair Display (headings), DM Sans (body) via Google Fonts
 
-Layout is mobile-first with a single `768px` breakpoint for desktop.
+Layout is mobile-first with a single `768px` breakpoint. Rules outside any `@media` query target phones; the block under `@media (min-width: 768px)` overrides for tablets and desktops.
 
 ## Life Areas
 
-Seven fixed areas used throughout the app: **Work, Learning, Health, Creative, Admin, Relationships, Rest.** These drive the radar chart (Life Attention Star Chart) in the Attention Dashboard.
+Seven fixed areas drive the Life Attention Star Chart:
+
+| Display name | Short form (in code) |
+| --- | --- |
+| Work / Career | Work |
+| Learning | Learning |
+| Health | Health |
+| Creative Projects | Creative |
+| Admin / Life Maintenance | Admin |
+| Relationships / Social | Relationships |
+| Rest / Recovery | Rest |
+
+## Roadmap
+
+| Phase | Status | What |
+| --- | --- | --- |
+| 1 | ✅ Built | Core app (FlowWeek): task manager, localStorage, responsive, PWA |
+| 2 | 🔨 Active | Rebrand to "Look, I Did Things" + effort levels + star chart + done list + new statuses + carry-over reasons |
+| 3 | Future | Today's 3, weekly review, attention warnings, task breakdown helper, energy check-in |
+| 4 | Future | Node.js + Express + Postgres backend with sync and login |
+| 5 | Future | Mascot chooser, recurring routines, push notifications, weekly summary email |
+
+V2 work happens on the `v2-development` branch; `main` holds the stable V1 deployed version.
 
 ## Key Docs
 
-- `FlowWeek App/README.md` — product vision, feature spec, and roadmap
-- `FlowWeek App/WALKTHROUGH.md` — line-by-line code explanation (read this before making structural changes)
+- `look-i-did-things/README.md` — product vision, feature spec, and roadmap
+- `look-i-did-things/WALKTHROUGH.md` — line-by-line code explanation (read this before making structural changes)
+
+## Progress Log
+
+The `progress/` folder contains short summaries of recent work, one file per work session, named `YYYY-MM-DD-short-slug.md`. **At the start of every coding session, read the most recent 2–3 files in `progress/`** (sorted by filename, newest last) to pick up context on what was last worked on, what's unfinished, and any open gotchas. See `progress/README.md` for the convention and `progress/TEMPLATE.md` for the format.
+
+## Wrap Up Session
+
+When the user says **"wrap up session"** (or close variants like "let's wrap up", "end of session", "I'm taking a break", "/wrap-up-session"), follow this procedure. The point is to leave a clean handoff so future-Phiwe and future-Claude can pick up exactly where things left off — without him having to remember anything.
+
+### Step 1 — Pick the source of truth
+
+There are two modes. Choose based on what the user provided:
+
+- **Mode A — User-written summary.** If the user has attached, pasted, or pointed to a text file with their own session notes (e.g. "here's my notes: notes.txt", or content pasted into the chat), use *that* as the source. Don't embellish or invent details beyond what they wrote — they captured what matters to them. Just reformat it into the structure below.
+- **Mode B — Auto-generate from the conversation.** If no summary was provided, look back over the current conversation and reconstruct the session yourself. Identify: concrete things that got done (files created/changed, decisions made, bugs fixed), what's unfinished or queued for next time, and any gotchas worth remembering.
+
+If it's ambiguous which mode applies, briefly ask before proceeding.
+
+### Step 2 — Write two files
+
+Write both of these to the `progress/` folder. Use today's date and a 2–4 word lowercase slug describing the session theme (e.g. `2026-05-02-add-progress-folder.md`). **Both files should be detailed and walk through what happened step by step — no terse one-line bullets.** Phiwe wants to be able to read these and actually relive the session, not just see a checklist.
+
+#### 1. `progress/YYYY-MM-DD-slug.md` — structured log
+
+Use this layout:
+
+```markdown
+# What I did
+
+## 1. <Short heading for the first major thing>
+Plain-English explanation of *what* was done and *why* it matters, in 1–3 sentences. If commands were run, include them in a fenced code block. If files were created or changed, name them.
+
+## 2. <Next heading>
+Same shape — explanation, then commands/file names if relevant.
+
+(...continue numbering through every meaningful thing that happened. Don't skip "small" steps; setup steps matter for someone learning.)
+
+# Where things stand
+| Thing | Status |
+| --- | --- |
+| <thing> | ✅ Done / 🟡 In progress / ⬜ Not started |
+
+# What's next / unfinished
+- Concrete next actions, things half-finished, branches still open.
+
+# Notes / gotchas
+- Decisions made, surprises, identifiers worth remembering (usernames, emails, URLs, branch names), things that could trip up future-Claude or future-Phiwe.
+```
+
+The structured `.md` is what Claude reads next session, so prioritise concrete details — file paths, exact commands, branch names, "we tried X but went with Y" decisions. Numbered headings (not bullets) for *What I did* — bullets are fine inside sections.
+
+#### 2. `progress/YYYY-MM-DD-slug-overview.txt` — plain-text overview
+
+This is the friendly, readable version Phiwe skims on his phone or prints out. Plain text only — no markdown, no asterisks, no code fences. But it should still be **detailed**: walk through the same numbered steps from the `.md`, just rewritten as flowing prose paragraphs that explain things in plain English. Include the commands inline where they matter (e.g. `git init`, `git push -u origin main`). End with a short "where things stand" recap and a warm closing line.
+
+Aim for the file to feel like a friend writing him a letter recapping the session — thorough, readable, no jargon dumps.
+
+### Step 3 — Hand off cleanly
+
+Link both files for the user using `computer://` links. Keep your message short — a one-line summary of what was logged and the two links. Don't add coaching or next-step suggestions; the wrap-up command is for stepping *away*, not for kicking off more work.
