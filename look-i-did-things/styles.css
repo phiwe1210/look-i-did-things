@@ -1168,3 +1168,300 @@ body.is-onboarding .app {
   }
   .progress-grid .day-bars-card { grid-column: 1 / -1; }
 }
+
+/* ============================================================
+   ADD A THING (Page 6)
+   ----------------------------------------------------------------
+   Form with day chip row, life-area chip grid, effort & priority
+   pill rows, a Today's 3 toggle, and the painted Save Thing CTA.
+   Mascot is a static overlay in the corner of the header for now.
+   ============================================================ */
+
+.view-add {
+  position: relative;
+}
+
+.add-header {
+  position: relative;
+  padding-right: 90px; /* room for the corner mascot */
+  margin-bottom: 14px;
+}
+.add-title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+.add-sub {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+.add-mascot {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-field {
+  /* Inherits .field pill input from auth pages; nothing else to do. */
+}
+.add-field-icon {
+  background: var(--life-rest-bg);
+  color: var(--life-rest-ink);
+}
+
+/* Each labelled section (When? / Life Area / Effort / Priority).
+   <fieldset> reset so it doesn't draw a default border. */
+.add-section {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.add-label {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  padding: 0;
+  margin: 0;
+}
+
+/* ---------- Chip row (day-of-week + effort + priority) ---------- */
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chip-days .chip {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Generic chip button (used by day chips). */
+.chip {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 6px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  text-align: center;
+}
+.chip:hover { background: var(--surface-2); }
+.chip.is-selected {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(31, 107, 92, 0.25);
+}
+
+/* ---------- Life Area chip grid -------------------------------- */
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.life-chip {
+  appearance: none;
+  border: 1.5px solid transparent;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, transform 100ms ease, box-shadow 140ms ease;
+}
+.life-chip:hover { transform: translateY(-1px); }
+.life-chip .life-chip-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.life-chip .life-chip-icon svg { width: 14px; height: 14px; }
+.life-chip.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(31, 107, 92, 0.18);
+}
+
+/* Seven Life Area pastels — icon bubble fill + ink. */
+.life-chip[data-life="Creative"]      .life-chip-icon { background: var(--life-creative-bg);  color: var(--life-creative-ink); }
+.life-chip[data-life="Health"]        .life-chip-icon { background: var(--life-health-bg);    color: var(--life-health-ink); }
+.life-chip[data-life="Learning"]      .life-chip-icon { background: var(--life-learning-bg);  color: var(--life-learning-ink); }
+.life-chip[data-life="Admin"]         .life-chip-icon { background: var(--life-admin-bg);     color: var(--life-admin-ink); }
+.life-chip[data-life="Work"]          .life-chip-icon { background: var(--life-work-bg);      color: var(--life-work-ink); }
+.life-chip[data-life="Relationships"] .life-chip-icon { background: var(--life-social-bg);    color: var(--life-social-ink); }
+.life-chip[data-life="Rest"]          .life-chip-icon { background: var(--life-rest-bg);      color: var(--life-rest-ink); }
+
+/* ---------- Effort & Priority pill rows ------------------------ */
+/* Each pill is a soft pastel pill with an icon + label, and its
+   selected state borders teal. Colours follow the wireframe. */
+.pill-row {
+  flex-wrap: nowrap;
+}
+.pill-chip {
+  flex: 1;
+  appearance: none;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, transform 100ms ease, box-shadow 140ms ease;
+}
+.pill-chip:hover { transform: translateY(-1px); }
+.pill-chip svg { width: 16px; height: 16px; }
+.pill-chip.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(31, 107, 92, 0.16);
+}
+
+/* Effort colours. */
+.pill-chip[data-effort="Light"]  { background: var(--life-health-bg);   color: var(--life-health-ink); }
+.pill-chip[data-effort="Medium"] { background: var(--life-rest-bg);     color: var(--life-rest-ink); }
+.pill-chip[data-effort="Deep"]   { background: var(--life-learning-bg); color: var(--life-learning-ink); }
+
+/* Priority colours (low = green, medium = amber, high = red). */
+.pill-chip[data-priority="Low"]    { background: var(--life-health-bg); color: var(--life-health-ink); }
+.pill-chip[data-priority="Medium"] { background: var(--life-rest-bg);   color: var(--life-rest-ink); }
+.pill-chip[data-priority="High"]   { background: var(--life-work-bg);   color: var(--life-work-ink); }
+
+/* ---------- "Add to Today's 3" toggle row ---------------------- */
+.today3-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.today3-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff1c0;
+  color: #c08a18;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.today3-icon svg { width: 18px; height: 18px; }
+.today3-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.today3-title { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+.today3-sub   { color: var(--text-muted); font-size: 0.78rem; margin-top: 2px; }
+
+/* Custom toggle switch. Hides the underlying checkbox and draws
+   our own track + thumb in CSS. */
+.toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.toggle input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(20, 30, 40, 0.18);
+  transition: transform 160ms ease;
+}
+.toggle input:checked ~ .toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle input:checked ~ .toggle-track .toggle-thumb,
+.toggle input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* The Save Thing button reuses .btn-primary; we just need the
+   yellow arrow icon and a little extra top spacing. */
+.btn-save-thing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.btn-save-thing .btn-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--mascot-yellow);
+}
+
+/* Desktop tweak — the form has its own breathing room and the
+   mascot can grow slightly. The old two-column .add-grid is gone. */
+@media (min-width: 768px) {
+  .view-add {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .add-mascot {
+    width: 110px;
+    height: 110px;
+  }
+}

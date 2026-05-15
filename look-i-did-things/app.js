@@ -15,6 +15,8 @@
 const STORAGE_KEY = "lidt_tasks";
 const CARRY_DISMISS_KEY = "lidt_carry_dismissed"; // tracks which weeks user dismissed the banner for
 const MASCOT_KEY = "lidt_mascot";                  // the user's chosen support animal (set on Page 4)
+const SCHEMA_KEY  = "lidt_schema_version";         // bump to wipe legacy tasks on next load
+const SCHEMA_VERSION = 2;                          // V2 = lifeArea + effort + capitalised priority
 
 // Support mascots offered on the Choose Your Animal page (Page 4).
 // Each entry maps to assets/mascots/<id>.png. Tint is the pastel
@@ -34,10 +36,48 @@ const ONBOARDING_VIEWS = new Set(["welcome", "signup", "signin", "choose"]);
 const DAY_NAMES_FULL  = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_NAMES_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-const CATEGORIES = ["Work","Personal","Physical","Spiritual","Intellectual","Mental Health","Financial"];
+/* ----- V2 task model constants ---------------------------------
+   The 7 Life Areas (canonical short-form ids from CLAUDE.md). The
+   display label can differ from the id — "Relationships" stores
+   internally but the chip label says "Social" per the wireframe.
+   Each entry also carries its Lucide SVG icon shape. */
+const LIFE_AREAS = [
+  { id: "Creative",      label: "Creative",  icon: '<path d="M12 2a10 10 0 0 0 0 20c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/><circle cx="8.5" cy="7.5" r="1" fill="currentColor"/><circle cx="13.5" cy="6.5" r="1" fill="currentColor"/><circle cx="17.5" cy="10.5" r="1" fill="currentColor"/><circle cx="6.5" cy="12.5" r="1" fill="currentColor"/>' },
+  { id: "Health",        label: "Health",    icon: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>' },
+  { id: "Learning",      label: "Learning",  icon: '<path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><path d="M12 7v14"/>' },
+  { id: "Admin",         label: "Admin",     icon: '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>' },
+  { id: "Work",          label: "Work",      icon: '<rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+  { id: "Relationships", label: "Social",    icon: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+  { id: "Rest",          label: "Rest",      icon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>' },
+];
 
-const PRIORITY_ORDER = { high: 0, mid: 1, low: 2 };
-const PRIORITY_LABEL = { high: "🔴 High", mid: "🟡 Mid", low: "🟢 Low" };
+const EFFORTS = [
+  { id: "Light",  label: "Light",  icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
+  { id: "Medium", label: "Medium", icon: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>' },
+  { id: "Deep",   label: "Deep",   icon: '<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>' },
+];
+
+const PRIORITIES = [
+  { id: "Low",    label: "Low",    icon: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>' },
+  { id: "Medium", label: "Medium", icon: '<path d="M5 12h14"/>' },
+  { id: "High",   label: "High",   icon: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>' },
+];
+
+/* Day chip row visual order — Monday first (matches the wireframe).
+   We still store day as JS getDay() (0=Sun…6=Sat) for compat with V1
+   helpers, so the chip carries jsDay separately from its visual slot. */
+const DAY_CHIPS = [
+  { short: "Mon", jsDay: 1 },
+  { short: "Tue", jsDay: 2 },
+  { short: "Wed", jsDay: 3 },
+  { short: "Thu", jsDay: 4 },
+  { short: "Fri", jsDay: 5 },
+  { short: "Sat", jsDay: 6 },
+  { short: "Sun", jsDay: 0 },
+];
+
+const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
+const PRIORITY_LABEL = { High: "🔴 High", Medium: "🟡 Medium", Low: "🟢 Low" };
 
 // ---------- 2. STATE --------------------------------------------
 // One object holds everything the UI needs. When it changes, we re-render.
@@ -46,13 +86,34 @@ const state = {
   activeView: "today", // which view is showing
   selectedDay: null,   // which day is selected in the Week view (0-6)
   chosenMascot: localStorage.getItem(MASCOT_KEY) || null, // user's pick from Page 4
+  // Draft state for the Add a Thing form (Page 6). Lives here so
+  // render() can redraw chip-selected states from a single source of
+  // truth. Reset to defaults after each successful save.
+  addDraft: {
+    day:          new Date().getDay(),
+    lifeArea:     null,
+    effort:       null,
+    priority:     null,
+    inTodayThree: false,
+  },
 };
 
 // ---------- 3. STORAGE HELPERS ----------------------------------
 // Read tasks from localStorage. If anything goes wrong (corrupt data,
 // first-ever run), return an empty array so the app still works.
+//
+// Schema check: if the stored SCHEMA_VERSION doesn't match the current
+// constant, wipe tasks. V1 → V2 changes the task fields (lifeArea
+// replaces category, effort added, priority capitalised) and the old
+// rows aren't worth migrating for dev data — easier to start fresh.
 function loadTasks() {
   try {
+    const stored = Number(localStorage.getItem(SCHEMA_KEY) || 0);
+    if (stored !== SCHEMA_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(SCHEMA_KEY, String(SCHEMA_VERSION));
+      return [];
+    }
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
@@ -115,13 +176,19 @@ function currentWeekLabel() {
 }
 
 // ---------- 5. TASK OPERATIONS ----------------------------------
-function addTask({ text, day, category, priority }) {
+// V2 task shape: lifeArea (one of LIFE_AREAS.id), effort (Light/Medium/
+// Deep), priority (Low/Medium/High), inTodayThree boolean. The legacy
+// `done` boolean stays around so the Today/Week/Progress views still
+// work until they're rebuilt in Pages 5 and 7.
+function addTask({ text, day, lifeArea, effort, priority, inTodayThree }) {
   const task = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     text: text.trim(),
     day: Number(day),
-    category,
+    lifeArea,
+    effort,
     priority,
+    inTodayThree: !!inTodayThree,
     done: false,
     weekKey: currentWeekKey(),
     createdAt: Date.now(),
@@ -195,7 +262,11 @@ function el(tag, attrs = {}, children = []) {
 
 // Build a single task card element
 function taskCard(t, { showMeta = true } = {}) {
-  const card = el("div", { class: `task priority-${t.priority} ${t.done ? "done" : ""}`, dataset: { id: t.id } });
+  // V2 priority storage is "Low"/"Medium"/"High" — map to the
+  // existing lowercase CSS class names from V1 so the coloured
+  // priority bar on each card still works.
+  const priorityClass = String(t.priority || "").toLowerCase() || "medium";
+  const card = el("div", { class: `task priority-${priorityClass} ${t.done ? "done" : ""}`, dataset: { id: t.id } });
 
   const checkbox = el("button", {
     class: `checkbox ${t.done ? "is-checked" : ""}`,
@@ -209,8 +280,8 @@ function taskCard(t, { showMeta = true } = {}) {
   if (showMeta) {
     const meta = el("div", { class: "task-meta" }, [
       el("span", { class: "pill" }, DAY_NAMES_SHORT[t.day]),
-      el("span", { class: "pill" }, t.category),
-      el("span", { class: "pill" }, PRIORITY_LABEL[t.priority]),
+      el("span", { class: "pill" }, t.lifeArea || ""),
+      el("span", { class: "pill" }, PRIORITY_LABEL[t.priority] || t.priority || ""),
     ]);
     body.appendChild(meta);
   }
@@ -369,15 +440,92 @@ function renderTodayView() {
   renderTaskList(list, tasks, "No tasks scheduled for today.", { emptyEmoji: "☕" });
 }
 
-function renderAddView() {
-  const list = document.getElementById("addThisWeekList");
-  renderTaskList(list, tasksThisWeek(), "No tasks added yet this week.");
-
-  // On first render, default the day dropdown to today
-  const dayDropdown = document.getElementById("taskDay");
-  if (!dayDropdown.dataset.touched) {
-    dayDropdown.value = String(new Date().getDay());
+// Build a chip button. Used by the day row, life-area grid, effort
+// and priority pill rows. Selection state is reflected by toggling
+// the .is-selected class against the current value in state.addDraft.
+function buildChip({ className, label, iconHtml, dataset, isSelected, onSelect }) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `${className}${isSelected ? " is-selected" : ""}`;
+  btn.setAttribute("role", "radio");
+  btn.setAttribute("aria-checked", isSelected ? "true" : "false");
+  if (dataset) Object.assign(btn.dataset, dataset);
+  if (iconHtml) {
+    const ico = document.createElement("span");
+    ico.className = `${className}-icon`;
+    ico.setAttribute("aria-hidden", "true");
+    ico.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconHtml}</svg>`;
+    btn.appendChild(ico);
   }
+  if (label) {
+    const txt = document.createElement("span");
+    txt.textContent = label;
+    btn.appendChild(txt);
+  }
+  btn.addEventListener("click", () => { onSelect(); render(); });
+  return btn;
+}
+
+function renderAddView() {
+  const draft = state.addDraft;
+
+  // Day-of-week row (Mon → Sun visually, JS getDay() index in storage).
+  const dayRow = document.getElementById("dayChips");
+  dayRow.innerHTML = "";
+  DAY_CHIPS.forEach(({ short, jsDay }) => {
+    dayRow.appendChild(buildChip({
+      className: "chip",
+      label: short,
+      isSelected: draft.day === jsDay,
+      onSelect: () => { draft.day = jsDay; },
+    }));
+  });
+
+  // Life Area chip grid.
+  const lifeRow = document.getElementById("lifeChips");
+  lifeRow.innerHTML = "";
+  LIFE_AREAS.forEach(la => {
+    lifeRow.appendChild(buildChip({
+      className: "life-chip",
+      label: la.label,
+      iconHtml: la.icon,
+      dataset: { life: la.id },
+      isSelected: draft.lifeArea === la.id,
+      onSelect: () => { draft.lifeArea = la.id; },
+    }));
+  });
+
+  // Effort pill row.
+  const effortRow = document.getElementById("effortChips");
+  effortRow.innerHTML = "";
+  EFFORTS.forEach(eff => {
+    effortRow.appendChild(buildChip({
+      className: "pill-chip",
+      label: eff.label,
+      iconHtml: eff.icon,
+      dataset: { effort: eff.id },
+      isSelected: draft.effort === eff.id,
+      onSelect: () => { draft.effort = eff.id; },
+    }));
+  });
+
+  // Priority pill row.
+  const prioRow = document.getElementById("priorityChips");
+  prioRow.innerHTML = "";
+  PRIORITIES.forEach(p => {
+    prioRow.appendChild(buildChip({
+      className: "pill-chip",
+      label: p.label,
+      iconHtml: p.icon,
+      dataset: { priority: p.id },
+      isSelected: draft.priority === p.id,
+      onSelect: () => { draft.priority = p.id; },
+    }));
+  });
+
+  // Today's 3 toggle reflects the draft.
+  const today3 = document.getElementById("taskTodayThree");
+  if (today3) today3.checked = !!draft.inTodayThree;
 }
 
 function renderProgressView() {
@@ -392,10 +540,10 @@ function renderProgressView() {
   document.getElementById("progressSub").textContent =
     total ? `${total} task${total === 1 ? "" : "s"} this week` : "No tasks this week yet.";
 
-  // By priority
+  // By priority — V2 keys are "High"/"Medium"/"Low".
   const pStats = document.getElementById("priorityStats");
   pStats.innerHTML = "";
-  ["high","mid","low"].forEach(p => {
+  ["High","Medium","Low"].forEach(p => {
     const items = tasks.filter(t => t.priority === p);
     const d = items.filter(t => t.done).length;
     const total = items.length;
@@ -406,23 +554,23 @@ function renderProgressView() {
         el("span", { class: "value" }, total ? `${d} / ${total}` : "—"),
       ]),
       el("div", { class: "progress" }, [
-        el("div", { class: `progress-fill ${p}`, style: `width:${pct}%` }),
+        el("div", { class: `progress-fill ${p.toLowerCase()}`, style: `width:${pct}%` }),
       ]),
     ]));
   });
 
-  // By category
+  // By life area — replaces V1's "by category" loop.
   const cStats = document.getElementById("categoryStats");
   cStats.innerHTML = "";
-  CATEGORIES.forEach(cat => {
-    const items = tasks.filter(t => t.category === cat);
+  LIFE_AREAS.forEach(la => {
+    const items = tasks.filter(t => t.lifeArea === la.id);
     if (items.length === 0) return;
     const d = items.filter(t => t.done).length;
     const total = items.length;
     const pct = total ? Math.round((d / total) * 100) : 0;
     cStats.appendChild(el("div", {}, [
       el("div", { class: "stat-row" }, [
-        el("span", { class: "label" }, cat),
+        el("span", { class: "label" }, la.label),
         el("span", { class: "value" }, `${d} / ${total}`),
       ]),
       el("div", { class: "progress" }, [
@@ -516,24 +664,51 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
   btn.addEventListener("click", () => setView(btn.dataset.view));
 });
 
+// Add a Thing (Page 6) — validate the draft, push a task, then
+// route to This Week so the user sees the thing they just added.
 document.getElementById("addForm").addEventListener("submit", (e) => {
   e.preventDefault();
-  const text = document.getElementById("taskText").value.trim();
-  if (!text) return;
+  const textInput = document.getElementById("taskText");
+  const text = textInput.value.trim();
+  const draft = state.addDraft;
+
+  // Lightweight validation: everything except inTodayThree is required.
+  // (Day always has a default of today, so it can't be empty.)
+  const missing = [];
+  if (!text)            missing.push("a name");
+  if (!draft.lifeArea)  missing.push("a life area");
+  if (!draft.effort)    missing.push("an effort level");
+  if (!draft.priority)  missing.push("a priority");
+  if (missing.length) {
+    alert(`Please pick ${missing.join(", ")} before saving.`);
+    return;
+  }
+
+  // Read the toggle just-in-time (it doesn't drive render so we
+  // don't push every keystroke through state).
+  draft.inTodayThree = !!document.getElementById("taskTodayThree").checked;
+
   addTask({
     text,
-    day: document.getElementById("taskDay").value,
-    category: document.getElementById("taskCategory").value,
-    priority: document.getElementById("taskPriority").value,
+    day:          draft.day,
+    lifeArea:     draft.lifeArea,
+    effort:       draft.effort,
+    priority:     draft.priority,
+    inTodayThree: draft.inTodayThree,
   });
-  // Reset only the text — keep day/category/priority for fast bulk entry
-  document.getElementById("taskText").value = "";
-  document.getElementById("taskText").focus();
-  render();
-});
 
-document.getElementById("taskDay").addEventListener("change", (e) => {
-  e.target.dataset.touched = "1";
+  // Reset the draft for next time — keep `day` defaulted to today.
+  state.addDraft = {
+    day:          new Date().getDay(),
+    lifeArea:     null,
+    effort:       null,
+    priority:     null,
+    inTodayThree: false,
+  };
+  textInput.value = "";
+
+  // Land in This Week so the user sees the thing they just added.
+  setView("week");
 });
 
 // Page 1 — Welcome wiring.

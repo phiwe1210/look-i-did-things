@@ -259,61 +259,73 @@
         <div id="todayList"></div>
       </section>
 
-      <!-- ADD VIEW ------------------------------------------------ -->
-      <section class="view" id="view-add">
-        <h2 class="section-title">Add a task</h2>
-        <p class="section-sub">Dump everything you want to do this week.</p>
+      <!-- ADD A THING (Page 6) ------------------------------------ -->
+      <!-- Wireframe-faithful add form: pill input + day chips +
+           life-area chip grid + effort & priority pill rows + Today's-3
+           toggle + Save Thing CTA. The corner mascot is a static PNG
+           overlay for now; we'll swap to a painted background later. -->
+      <section class="view view-add" id="view-add">
+        <header class="add-header">
+          <div class="add-header-text">
+            <h1 class="add-title">Add a Thing</h1>
+            <p class="add-sub">Get it out of your head.</p>
+          </div>
+          <img class="add-mascot" src="assets/mascots/done-duck.png" alt="" aria-hidden="true">
+        </header>
 
-        <div class="add-grid">
-          <div>
-            <form id="addForm">
-              <div class="form-group">
-                <label for="taskText">Task</label>
-                <textarea class="textarea" id="taskText" placeholder="e.g. Go for a 5km run" required maxlength="200"></textarea>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="taskDay">Day</label>
-                  <select class="select" id="taskDay" required>
-                    <option value="0">Sunday</option>
-                    <option value="1">Monday</option>
-                    <option value="2">Tuesday</option>
-                    <option value="3">Wednesday</option>
-                    <option value="4">Thursday</option>
-                    <option value="5">Friday</option>
-                    <option value="6">Saturday</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="taskPriority">Priority</label>
-                  <select class="select" id="taskPriority" required>
-                    <option value="high">🔴 High</option>
-                    <option value="mid" selected>🟡 Mid</option>
-                    <option value="low">🟢 Low</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="taskCategory">Category</label>
-                <select class="select" id="taskCategory" required>
-                  <option value="Work">Work</option>
-                  <option value="Personal">Personal</option>
-                  <option value="Physical">Physical</option>
-                  <option value="Spiritual">Spiritual</option>
-                  <option value="Intellectual">Intellectual</option>
-                  <option value="Mental Health">Mental Health</option>
-                  <option value="Financial">Financial</option>
-                </select>
-              </div>
-              <button type="submit" class="btn-primary">Add task</button>
-            </form>
+        <form id="addForm" class="add-form" novalidate>
+          <!-- Pill text input. Reuses .field / .field-input from the
+               auth pages for visual consistency. -->
+          <div class="field add-field">
+            <span class="field-icon add-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </span>
+            <input class="field-input" type="text" id="taskText"
+                   placeholder="What do you want to get done?"
+                   required maxlength="200" autocomplete="off">
           </div>
 
-          <div>
-            <h3 class="section-title" style="font-size:1.1rem; margin-top: 8px;">Added this week</h3>
-            <div id="addThisWeekList"></div>
-          </div>
-        </div>
+          <fieldset class="add-section">
+            <legend class="add-label">When?</legend>
+            <div class="chip-row chip-days" id="dayChips" role="radiogroup" aria-label="Day of week"></div>
+          </fieldset>
+
+          <fieldset class="add-section">
+            <legend class="add-label">Life Area</legend>
+            <div class="chip-grid life-chips" id="lifeChips" role="radiogroup" aria-label="Life area"></div>
+          </fieldset>
+
+          <fieldset class="add-section">
+            <legend class="add-label">Effort</legend>
+            <div class="chip-row pill-row effort-chips" id="effortChips" role="radiogroup" aria-label="Effort"></div>
+          </fieldset>
+
+          <fieldset class="add-section">
+            <legend class="add-label">Priority</legend>
+            <div class="chip-row pill-row priority-chips" id="priorityChips" role="radiogroup" aria-label="Priority"></div>
+          </fieldset>
+
+          <label class="today3-row" for="taskTodayThree">
+            <span class="today3-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </span>
+            <span class="today3-text">
+              <span class="today3-title">Add to Today's 3</span>
+              <span class="today3-sub">Pick your top 3 things to focus on</span>
+            </span>
+            <span class="toggle">
+              <input type="checkbox" id="taskTodayThree">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+
+          <button type="submit" class="btn-primary btn-save-thing">
+            Save Thing
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+          </button>
+        </form>
       </section>
 
       <!-- REVIEW VIEW (stub — will be built in Page 7) ------------ -->
