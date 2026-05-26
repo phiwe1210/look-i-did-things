@@ -54,15 +54,6 @@
       </div>
     </header>
 
-    <!-- CARRY-OVER BANNER (hidden by default, shown via JS) ------ -->
-    <div id="carryBanner" class="carry-banner" hidden>
-      <p id="carryText"></p>
-      <div style="display:flex; gap:8px;">
-        <button class="dismiss" id="carryDismiss">Dismiss</button>
-        <button id="carryConfirm">Carry over</button>
-      </div>
-    </div>
-
     <!-- VIEWS WRAPPER (everything below the header sits here) ----- -->
     <main class="views-wrapper">
 
@@ -236,18 +227,67 @@
         </footer>
       </section>
 
-      <!-- WEEK VIEW ----------------------------------------------- -->
-      <section class="view" id="view-week">
-        <h2 class="section-title">This week</h2>
-        <p class="section-sub" id="weekSub">Tap a day to focus on it.</p>
+      <!-- THIS WEEK (Page 5) -------------------------------------- -->
+      <!-- Wireframe-faithful weekly view: title + week range, speech
+           bubble + corner duck hero, Planned Attention card listing
+           up to 3 Today's-3 tasks, Mon-Sun date strip, selected-day
+           task list, encouragement footer. Desktop reuses the 7-column
+           grid below the rest. -->
+      <section class="view view-week" id="view-week">
+        <header class="week-header">
+          <h1 class="week-title">This Week</h1>
+          <p class="week-range" id="weekRange"></p>
+        </header>
 
-        <!-- Mobile: horizontal day tabs -->
-        <div class="day-tabs" id="dayTabs" role="tablist"></div>
+        <!-- Speech bubble + corner mascot. The duck is a positioned
+             <img> for now (same approach as Page 6) — swap to a
+             painted background later. -->
+        <div class="week-hero">
+          <div class="speech-bubble">You're building momentum!</div>
+          <img class="week-mascot" src="assets/mascots/done-duck.png" alt="" aria-hidden="true">
+        </div>
 
-        <!-- Mobile: list for the selected day -->
-        <div id="weekDayList"></div>
+        <!-- Planned Attention card: 3-column row of life-area
+             mini-cards driven by the Top-3 tasks the user marked
+             on Page 6. Each card has an icon, the life area name,
+             a progress bar, and a small done/total label. -->
+        <section class="attention-card">
+          <header class="attention-header">
+            <h2 class="attention-title">Planned attention</h2>
+            <span class="attention-sub" id="attentionSub">Mark up to 3</span>
+          </header>
+          <div class="attention-grid" id="attentionGrid"></div>
+        </section>
 
-        <!-- Desktop: 7-column grid (rendered separately) -->
+        <!-- Mon-Sun date strip wrapped in a banner-style container
+             so the row reads as a single bar with the dates inside. -->
+        <div class="date-strip-banner">
+          <div class="date-strip" id="dateStrip" role="tablist" aria-label="Day of week"></div>
+        </div>
+
+        <!-- Selected day section: header + task cards. -->
+        <section class="day-section">
+          <header class="day-section-header">
+            <h2 class="day-section-title" id="weekDayTitle"></h2>
+            <a class="day-section-link" id="weekDayAdd" href="#" role="button">
+              <span aria-hidden="true">+</span> Add Task
+            </a>
+          </header>
+          <div class="day-task-list" id="weekDayList"></div>
+        </section>
+
+        <!-- Encouragement footer. Static copy for now. -->
+        <aside class="encouragement-card">
+          <span class="encouragement-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </span>
+          <div class="encouragement-text">
+            <strong>Small steps, big difference.</strong>
+            <span>You're showing up for yourself.</span>
+          </div>
+        </aside>
+
+        <!-- Desktop: 7-column grid (rendered separately, hidden on phones) -->
         <div class="week-grid" id="weekGrid"></div>
       </section>
 
@@ -328,10 +368,100 @@
         </form>
       </section>
 
-      <!-- REVIEW VIEW (stub — will be built in Page 7) ------------ -->
-      <section class="view" id="view-review">
-        <h2 class="section-title">Weekly Review</h2>
-        <p class="section-sub">Coming in Page 7. This view will reflect on the week, celebrate wins, and plan next week.</p>
+      <!-- WEEKLY REVIEW (Page 9) ---------------------------------- -->
+      <!-- Wireframe-faithful: title + week range, hero with the user's
+           chosen mascot and a "Look, you did things." line, three stat
+           circles (Completed / Started / Deep), Most + Least attention
+           cards, expandable "What are you proud of?" prompt, "Protect
+           next week" pill chooser, and the Plan next week button. -->
+      <section class="view view-review" id="view-review">
+        <header class="review-header">
+          <h1 class="review-title">Weekly Review</h1>
+          <p class="review-sub" id="reviewWeekRange">—</p>
+        </header>
+
+        <section class="review-hero">
+          <img class="review-mascot" id="reviewMascotImg" src="assets/mascots/done-duck.png" alt="" aria-hidden="true">
+          <p class="review-hero-text">Look, you did things.
+            <svg class="review-hero-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </p>
+        </section>
+
+        <div class="review-stats">
+          <div class="review-stat">
+            <span class="review-stat-icon review-stat-icon--done" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="review-stat-value" id="reviewDoneCount">0</span>
+            <span class="review-stat-label">Completed<br>tasks</span>
+            <span class="review-stat-delta" id="reviewDoneDelta"></span>
+          </div>
+          <div class="review-stat">
+            <span class="review-stat-icon review-stat-icon--started" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+            </span>
+            <span class="review-stat-value" id="reviewStartedCount">0</span>
+            <span class="review-stat-label">Started<br>tasks</span>
+            <span class="review-stat-delta" id="reviewStartedDelta"></span>
+          </div>
+          <div class="review-stat">
+            <span class="review-stat-icon review-stat-icon--deep" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+            </span>
+            <span class="review-stat-value" id="reviewDeepCount">0</span>
+            <span class="review-stat-label">Finished<br>deep tasks</span>
+            <span class="review-stat-delta" id="reviewDeepDelta"></span>
+          </div>
+        </div>
+
+        <div class="review-attention">
+          <div class="review-attention-card review-attention-card--most">
+            <span class="review-attention-label">Most attention</span>
+            <span class="review-attention-value" id="reviewMostValue">—</span>
+            <span class="review-attention-meta" id="reviewMostMeta">Keep going!</span>
+          </div>
+          <div class="review-attention-card review-attention-card--least">
+            <span class="review-attention-label">Least attention</span>
+            <span class="review-attention-value" id="reviewLeastValue">—</span>
+            <span class="review-attention-meta" id="reviewLeastMeta"></span>
+          </div>
+        </div>
+
+        <button class="review-card review-card--proud" id="reviewProudCard" type="button" aria-expanded="false">
+          <span class="review-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </span>
+          <span class="review-card-content">
+            <span class="review-card-title">What are you proud of?</span>
+            <span class="review-card-sub">Celebrate your wins, big or small</span>
+          </span>
+          <span class="review-card-chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </button>
+        <div class="review-proud-input" id="reviewProudInput" hidden>
+          <textarea id="reviewProudText" rows="3" placeholder="The thing I'm most proud of this week is…"></textarea>
+        </div>
+
+        <section class="review-card review-card--protect">
+          <span class="review-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <span class="review-card-content">
+            <span class="review-card-title">Protect next week</span>
+            <span class="review-card-sub">Choose what matters most</span>
+            <div class="review-protect-pills" id="reviewProtectPills"></div>
+          </span>
+        </section>
+
+        <button class="btn-plan-next-week" id="reviewPlanBtn" type="button">
+          <span>Plan next week</span>
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </button>
+
+        <div class="review-saved-msg" id="reviewSavedMsg" hidden>Saved ✓</div>
       </section>
 
       <!-- PROGRESS VIEW ------------------------------------------- -->
@@ -364,27 +494,142 @@
         </div>
       </section>
 
+      <!-- STAR CHART (Page 7) ------------------------------------- -->
+      <!-- Wireframe-faithful Progress page: title + corner duck, This
+           Week completion card, Life Attention Star Chart (heptagon
+           radar), Most/Needs attention callout pair, and the per-area
+           attention-bar list. -->
+      <section class="view view-starchart" id="view-starchart">
+        <header class="starchart-header">
+          <div class="starchart-header-text">
+            <h1 class="starchart-title">Progress</h1>
+            <p class="starchart-sub">Look, you did things.</p>
+          </div>
+          <img class="starchart-mascot" src="assets/mascots/done-duck.png" alt="" aria-hidden="true">
+        </header>
+
+        <!-- This Week completion card. -->
+        <section class="starchart-week-card">
+          <header class="starchart-week-head">
+            <h2 class="starchart-week-title">This week</h2>
+            <span class="starchart-week-pct" id="starWeekPct">0%</span>
+          </header>
+          <div class="progress"><div class="progress-fill" id="starWeekBar" style="width:0%"></div></div>
+          <p class="starchart-week-meta" id="starWeekMeta">No tasks yet this week.</p>
+        </section>
+
+        <!-- Star Chart card. The SVG heptagon is built by JS. -->
+        <section class="starchart-radar-card">
+          <h2 class="starchart-section-title">Life Attention Star Chart</h2>
+          <div class="starchart-radar" id="starRadar"></div>
+        </section>
+
+        <!-- Most attention / Needs attention callouts. -->
+        <div class="starchart-callouts">
+          <div class="starchart-callout starchart-callout--most" id="starMost">
+            <span class="starchart-callout-label">Most attention</span>
+            <span class="starchart-callout-value" id="starMostValue">—</span>
+          </div>
+          <div class="starchart-callout starchart-callout--needs" id="starNeeds">
+            <span class="starchart-callout-label">Needs attention</span>
+            <span class="starchart-callout-value" id="starNeedsValue">—</span>
+          </div>
+        </div>
+
+        <!-- Attention by area: horizontal bars per life area. -->
+        <section class="starchart-areas-card">
+          <h2 class="starchart-section-title">Attention by area</h2>
+          <div class="starchart-areas" id="starAreas"></div>
+        </section>
+      </section>
+
+      <!-- EVIDENCE LOG (Page 8) ----------------------------------- -->
+      <!-- Wireframe-faithful: title + share icon, big "Look, you did
+           things." headline beside the Task Raccoon, three stat tiles
+           (Done / Started / Deep wins), Export pill, and a day-grouped
+           list of every Done + Started task across all time. -->
+      <section class="view view-evidence" id="view-evidence">
+        <header class="evidence-header">
+          <h1 class="evidence-title">Evidence Log</h1>
+          <button class="evidence-share-btn" id="evidenceShareBtn" type="button" aria-label="Copy summary to clipboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </button>
+        </header>
+
+        <section class="evidence-hero">
+          <div class="evidence-hero-text">
+            <h2 class="evidence-hero-title">Look,<br>you did<br>things.</h2>
+            <p class="evidence-hero-sub">Every step counts.<br>You're building momentum.</p>
+          </div>
+          <img class="evidence-mascot" src="assets/mascots/task-raccoon.png" alt="" aria-hidden="true">
+        </section>
+
+        <div class="evidence-stats">
+          <div class="evidence-stat evidence-stat--done">
+            <span class="evidence-stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="evidence-stat-value" id="evidenceDoneCount">0</span>
+            <span class="evidence-stat-label">Done</span>
+          </div>
+          <div class="evidence-stat evidence-stat--started">
+            <span class="evidence-stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+            </span>
+            <span class="evidence-stat-value" id="evidenceStartedCount">0</span>
+            <span class="evidence-stat-label">Started</span>
+          </div>
+          <div class="evidence-stat evidence-stat--deep">
+            <span class="evidence-stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </span>
+            <span class="evidence-stat-value" id="evidenceDeepCount">0</span>
+            <span class="evidence-stat-label">Deep wins</span>
+          </div>
+        </div>
+
+        <button class="evidence-export-btn" id="evidenceExportBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Export / Copy Summary</span>
+        </button>
+
+        <section class="evidence-list" id="evidenceList"></section>
+      </section>
+
     </main>
 
     <!-- BOTTOM NAVIGATION (V2 wireframe pattern) ----------------------
          5 slots with the middle one being a floating teal "+" button.
-         The HTML order is left-to-right: today, week, add, progress, review.
-         CSS positions the "add" slot as a raised floating circle. -->
+         Order: week, star-chart, add, evidence, review. Star Chart
+         and Evidence Log are stub views for now — proper builds land
+         after This Week is signed off. -->
     <nav class="bottom-nav" role="tablist" aria-label="Main navigation">
-      <button class="nav-btn"      data-view="today"    aria-label="Today">
-        <span class="icon">🏠</span><span>Today</span>
+      <button class="nav-btn"      data-view="week"     aria-label="This Week">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </span>
+        <span>Week</span>
       </button>
-      <button class="nav-btn"      data-view="week"     aria-label="Week">
-        <span class="icon">📅</span><span>Week</span>
+      <button class="nav-btn"      data-view="starchart" aria-label="Star Chart">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </span>
+        <span>Star Chart</span>
       </button>
       <button class="nav-btn nav-add" data-view="add"      aria-label="Add a thing">
         <span class="icon">+</span>
       </button>
-      <button class="nav-btn"      data-view="progress" aria-label="Progress">
-        <span class="icon">📊</span><span>Progress</span>
+      <button class="nav-btn"      data-view="evidence" aria-label="Evidence Log">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+        </span>
+        <span>Evidence</span>
       </button>
       <button class="nav-btn"      data-view="review"   aria-label="Review">
-        <span class="icon">✨</span><span>Review</span>
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </span>
+        <span>Review</span>
       </button>
     </nav>
   </div>

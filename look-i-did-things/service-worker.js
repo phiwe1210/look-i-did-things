@@ -15,7 +15,7 @@
      next page reload.
    ================================================================ */
 
-const CACHE_VERSION = "lidt-v2.0.0-dev.11";
+const CACHE_VERSION = "lidt-v2.0.0-dev.18";
 const APP_SHELL = [
   "/",
   "/index.html",

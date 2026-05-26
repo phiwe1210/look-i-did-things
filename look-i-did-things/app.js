@@ -13,10 +13,10 @@
 // A "key" is just a name. The value must be a string, so we
 // JSON.stringify our array when saving, and JSON.parse when reading.
 const STORAGE_KEY = "lidt_tasks";
-const CARRY_DISMISS_KEY = "lidt_carry_dismissed"; // tracks which weeks user dismissed the banner for
 const MASCOT_KEY = "lidt_mascot";                  // the user's chosen support animal (set on Page 4)
+const REFLECTION_KEY = "lidt_reflections";         // per-week journal + protect-next-week picks (Page 9)
 const SCHEMA_KEY  = "lidt_schema_version";         // bump to wipe legacy tasks on next load
-const SCHEMA_VERSION = 2;                          // V2 = lifeArea + effort + capitalised priority
+const SCHEMA_VERSION = 3;                          // V3 = Monday-based week keys (Page 5)
 
 // Support mascots offered on the Choose Your Animal page (Page 4).
 // Each entry maps to assets/mascots/<id>.png. Tint is the pastel
@@ -83,7 +83,7 @@ const PRIORITY_LABEL = { High: "🔴 High", Medium: "🟡 Medium", Low: "🟢 Lo
 // One object holds everything the UI needs. When it changes, we re-render.
 const state = {
   tasks: [],           // array of task objects, see data shape in README
-  activeView: "today", // which view is showing
+  activeView: "week",  // which view is showing (Week is the home base now)
   selectedDay: null,   // which day is selected in the Week view (0-6)
   chosenMascot: localStorage.getItem(MASCOT_KEY) || null, // user's pick from Page 4
   // Draft state for the Add a Thing form (Page 6). Lives here so
@@ -139,19 +139,32 @@ function saveTasks() {
 
 // ---------- 4. WEEK KEY LOGIC -----------------------------------
 // Every task is tagged with a week key like "2026-W18" so we know
-// which week it belongs to. Our weeks run Sunday → Saturday.
+// which week it belongs to. Our weeks run Monday → Sunday (so the
+// date strip on Page 5 lines up with the week-filter logic).
 //
 // Algorithm:
-//   1. Find the Sunday at or before the date (start of that week).
-//   2. Find Jan 1 of that Sunday's year, rolled back to its Sunday.
+//   1. Find the Monday at or before the date (start of that week).
+//   2. Find Jan 1 of that Monday's year, rolled back to its Monday.
 //   3. The week number = floor((days between) / 7) + 1.
-function getWeekKey(date) {
+//
+// JS getDay() returns 0 for Sunday and 1-6 for Mon-Sat. We convert
+// to a Mon-based offset: Sun→6, Mon→0, Tue→1, …, Sat→5.
+function mondayOffset(d) {
+  const day = d.getDay();
+  return day === 0 ? 6 : day - 1;
+}
+
+function getWeekStartMonday(date = new Date()) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay()); // back to Sunday
+  d.setDate(d.getDate() - mondayOffset(d));
+  return d;
+}
 
+function getWeekKey(date) {
+  const d = getWeekStartMonday(date);
   const yearStart = new Date(d.getFullYear(), 0, 1);
-  yearStart.setDate(yearStart.getDate() - yearStart.getDay()); // its Sunday
+  yearStart.setDate(yearStart.getDate() - mondayOffset(yearStart));
 
   const diffMs = d - yearStart;
   const diffDays = Math.round(diffMs / 86400000);
@@ -160,19 +173,21 @@ function getWeekKey(date) {
 }
 
 function currentWeekKey()  { return getWeekKey(new Date()); }
-function previousWeekKey() {
-  const d = new Date();
-  d.setDate(d.getDate() - 7);
-  return getWeekKey(d);
-}
 
-// Friendly "Week of Apr 27" string for the header
+// Friendly "Week of Apr 27" string for the sticky header.
 function currentWeekLabel() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay()); // Sunday of this week
+  const d = getWeekStartMonday();
   const month = d.toLocaleString(undefined, { month: "short" });
   return `Week of ${month} ${d.getDate()}`;
+}
+
+// "10 May – 16 May" range string for the Page 5 header.
+function weekRangeLabel() {
+  const mon = getWeekStartMonday();
+  const sun = new Date(mon);
+  sun.setDate(sun.getDate() + 6);
+  const fmt = d => `${d.getDate()} ${d.toLocaleString(undefined, { month: "short" })}`;
+  return `${fmt(mon)} – ${fmt(sun)}`;
 }
 
 // ---------- 5. TASK OPERATIONS ----------------------------------
@@ -209,21 +224,6 @@ function deleteTask(id) {
   saveTasks();
 }
 
-// Move all undone tasks from previous week into the current week.
-function carryOverFromLastWeek() {
-  const prev = previousWeekKey();
-  const cur  = currentWeekKey();
-  let count = 0;
-  state.tasks.forEach(t => {
-    if (t.weekKey === prev && !t.done) {
-      t.weekKey = cur;
-      count++;
-    }
-  });
-  if (count) saveTasks();
-  return count;
-}
-
 // ---------- 6. SORTING & FILTERING ------------------------------
 function sortTasks(tasks) {
   // Undone first, then High → Mid → Low, then by created time.
@@ -238,7 +238,35 @@ function sortTasks(tasks) {
 function tasksThisWeek()        { return state.tasks.filter(t => t.weekKey === currentWeekKey()); }
 function tasksForDay(day)       { return tasksThisWeek().filter(t => t.day === day); }
 function tasksForToday()        { return tasksForDay(new Date().getDay()); }
-function undoneFromLastWeek()   { return state.tasks.filter(t => t.weekKey === previousWeekKey() && !t.done); }
+
+// Attention scoring (Page 7).
+// Formula from CLAUDE.md: Attention Score = Effort Points × Completion.
+// Effort points: Light=1, Medium=2, Deep=3.
+// Completion: Done=1, otherwise 0. (When the 5-status model lands,
+// Started will count as 0.5.)
+const EFFORT_POINTS = { Light: 1, Medium: 2, Deep: 3 };
+
+function attentionScoreFor(task) {
+  const eff = EFFORT_POINTS[task.effort] || 1;
+  const completion = task.done ? 1 : 0;
+  return eff * completion;
+}
+
+// Returns { areaId: { score, planned } } for the current week.
+// `score` is the earned attention. `planned` is the maximum possible
+// if every task in that area were completed — used to know whether
+// the area had any planned activity (filters Needs Attention).
+function attentionScoresThisWeek() {
+  const out = {};
+  LIFE_AREAS.forEach(la => { out[la.id] = { score: 0, planned: 0 }; });
+  tasksThisWeek().forEach(t => {
+    if (!t.lifeArea || !(t.lifeArea in out)) return;
+    const eff = EFFORT_POINTS[t.effort] || 1;
+    out[t.lifeArea].planned += eff;
+    out[t.lifeArea].score   += attentionScoreFor(t);
+  });
+  return out;
+}
 
 // ---------- 7. SAFE DOM HELPERS ---------------------------------
 // Always use textContent (not innerHTML) for user-supplied text.
@@ -313,55 +341,176 @@ function renderTaskList(container, tasks, emptyText = "No tasks yet.", opts = {}
 }
 
 // ---------- 8. VIEW RENDERERS -----------------------------------
-function renderWeekView() {
-  const today = new Date().getDay();
-  const selected = state.selectedDay ?? today;
 
-  // Mobile: day tabs
-  const tabs = document.getElementById("dayTabs");
-  tabs.innerHTML = "";
-  DAY_NAMES_SHORT.forEach((name, i) => {
-    const dayTasks = tasksForDay(i);
-    const done = dayTasks.filter(t => t.done).length;
-    const total = dayTasks.length;
-    const tab = el("button", {
-      class: `day-tab ${i === today ? "is-today" : ""} ${i === selected ? "is-active" : ""}`,
-      dataset: { day: i },
-      onclick: () => { state.selectedDay = i; render(); },
-    }, [
-      name,
-      el("span", { class: "count" }, total ? `${done}/${total}` : "—"),
-    ]);
-    tabs.appendChild(tab);
+// V2 task card used by the Week view (Page 5). Wireframe-faithful:
+// round radio-style check on the left, title in the middle, two
+// pills (life area with coloured dot + effort) below the title,
+// small × on the right.
+function weekTaskCard(t) {
+  const card = el("div", {
+    class: `task-card${t.done ? " is-done" : ""}`,
+    dataset: { id: t.id },
   });
 
-  // Mobile: tasks for selected day
-  const list = document.getElementById("weekDayList");
-  const selectedTasks = tasksForDay(selected);
-  const heading = el("h3", { style: "font-family: var(--font-body); font-size:1rem; margin-bottom:8px;" },
-    `${DAY_NAMES_FULL[selected]}${selected === today ? " (today)" : ""}`);
-  list.innerHTML = "";
-  list.appendChild(heading);
-  // progress bar for the selected day
-  const total = selectedTasks.length;
-  const done = selectedTasks.filter(t => t.done).length;
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  list.appendChild(el("div", { class: "progress" }, [el("div", { class: "progress-fill", style: `width:${pct}%` })]));
-  const taskWrap = el("div");
-  list.appendChild(taskWrap);
-  renderTaskList(taskWrap, selectedTasks, "Nothing planned for this day yet.");
+  const check = el("button", {
+    class: "task-card-check",
+    type: "button",
+    "aria-label": t.done ? "Mark incomplete" : "Mark complete",
+    onclick: (e) => { e.stopPropagation(); toggleTask(t.id); render(); },
+    html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  });
 
-  // Desktop: 7-column grid
+  const body = el("div", { class: "task-card-body" }, [
+    el("div", { class: "task-card-title" }, t.text),
+    el("div", { class: "task-card-meta" }, [
+      el("span", {
+        class: "task-card-pill task-card-pill--life",
+        dataset: { life: t.lifeArea || "" },
+      }, [
+        el("span", { class: `dot area-dot-${t.lifeArea}` }),
+        t.lifeArea || "",
+      ]),
+      t.effort ? el("span", {
+        class: "task-card-pill task-card-pill--effort",
+        dataset: { effort: t.effort },
+      }, t.effort) : null,
+    ].filter(Boolean)),
+  ]);
+
+  const del = el("button", {
+    class: "task-card-delete",
+    type: "button",
+    "aria-label": "Delete task",
+    onclick: (e) => {
+      e.stopPropagation();
+      if (confirm("Delete this task?")) { deleteTask(t.id); render(); }
+    },
+  }, "×");
+
+  card.append(check, body, del);
+  return card;
+}
+
+function renderWeekView() {
+  const todayJs = new Date().getDay();
+  const selected = state.selectedDay ?? todayJs;
+  const mon = getWeekStartMonday();
+
+  // Week range label.
+  const rangeEl = document.getElementById("weekRange");
+  if (rangeEl) rangeEl.textContent = weekRangeLabel();
+
+  // Planned Attention — 3-column grid of life-area tiles, driven
+  // by the Top-3 tasks grouped by life area.
+  const attentionGrid = document.getElementById("attentionGrid");
+  const attentionSub  = document.getElementById("attentionSub");
+  attentionGrid.innerHTML = "";
+  const top3 = tasksThisWeek().filter(t => t.inTodayThree);
+  // Group by life area, preserving insertion order.
+  const byArea = new Map();
+  top3.forEach(t => {
+    const key = t.lifeArea || "Admin";
+    if (!byArea.has(key)) byArea.set(key, { total: 0, done: 0 });
+    const stats = byArea.get(key);
+    stats.total++;
+    if (t.done) stats.done++;
+  });
+  const tiles = Array.from(byArea.entries()).slice(0, 3);
+  const totalTop3 = top3.length;
+  const doneTop3  = top3.filter(t => t.done).length;
+  if (attentionSub) {
+    attentionSub.textContent = totalTop3
+      ? `${doneTop3} / ${totalTop3} done`
+      : "Mark up to 3";
+  }
+  if (tiles.length === 0) {
+    attentionGrid.appendChild(el("div", { class: "attention-empty" },
+      "Mark up to 3 tasks as Today's 3 to see them here."));
+  } else {
+    tiles.forEach(([area, stats]) => {
+      const meta = LIFE_AREAS.find(la => la.id === area) || { label: area, icon: "" };
+      const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
+      attentionGrid.appendChild(el("div", {
+        class: "attention-tile",
+        dataset: { life: area },
+      }, [
+        el("span", {
+          class: "attention-tile-icon",
+          html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${meta.icon}</svg>`,
+        }),
+        el("span", { class: "attention-tile-name" }, meta.label),
+        el("div", { class: "attention-tile-bar" }, [
+          el("div", { class: "attention-tile-bar-fill", style: `width:${pct}%` }),
+        ]),
+        el("span", { class: "attention-tile-label" }, `${stats.done} / ${stats.total}`),
+      ]));
+    });
+  }
+
+  // Mon→Sun date strip. Each chip carries jsDay for filtering.
+  const strip = document.getElementById("dateStrip");
+  strip.innerHTML = "";
+  DAY_CHIPS.forEach(({ short, jsDay }, i) => {
+    const chipDate = new Date(mon);
+    chipDate.setDate(chipDate.getDate() + i);
+    const chip = el("button", {
+      class: `date-chip${jsDay === todayJs ? " is-today" : ""}${jsDay === selected ? " is-selected" : ""}`,
+      type: "button",
+      role: "tab",
+      dataset: { day: jsDay },
+      onclick: () => { state.selectedDay = jsDay; render(); },
+    }, [
+      el("span", { class: "date-chip-day" }, short),
+      el("span", { class: "date-chip-num" }, String(chipDate.getDate())),
+    ]);
+    strip.appendChild(chip);
+  });
+
+  // Selected day section: title + task list.
+  const dayTitle = document.getElementById("weekDayTitle");
+  const selectedIdx = DAY_CHIPS.findIndex(c => c.jsDay === selected);
+  const selectedDate = new Date(mon);
+  selectedDate.setDate(selectedDate.getDate() + (selectedIdx >= 0 ? selectedIdx : 0));
+  const monthShort = selectedDate.toLocaleString(undefined, { month: "short" });
+  const weekdayFull = DAY_NAMES_FULL[selected];
+  dayTitle.textContent = `${weekdayFull}, ${selectedDate.getDate()} ${monthShort}`;
+
+  const list = document.getElementById("weekDayList");
+  list.innerHTML = "";
+  const selectedTasks = tasksForDay(selected);
+  if (selectedTasks.length === 0) {
+    list.appendChild(el("div", { class: "empty", style: "padding:20px 8px; text-align:center; color: var(--text-muted);" }, [
+      el("span", { class: "emoji", style: "display:block; font-size:1.6rem; margin-bottom:6px;" }, "🌿"),
+      el("div", {}, "Nothing planned for this day yet."),
+    ]));
+  } else {
+    sortTasks(selectedTasks).forEach(t => list.appendChild(weekTaskCard(t)));
+  }
+
+  // "+ Add Task" link — routes to the Add a Thing view, pre-selecting
+  // the currently-selected day so the user lands on Page 6 ready to
+  // add a task to this day.
+  const addLink = document.getElementById("weekDayAdd");
+  if (addLink && !addLink.dataset.wired) {
+    addLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      state.addDraft.day = state.selectedDay ?? new Date().getDay();
+      setView("add");
+    });
+    addLink.dataset.wired = "1";
+  }
+
+  // Desktop: 7-column grid (Mon→Sun). Hidden on phones via CSS.
   const grid = document.getElementById("weekGrid");
   grid.innerHTML = "";
-  DAY_NAMES_FULL.forEach((name, i) => {
-    const col = el("div", { class: `day-column ${i === today ? "is-today" : ""}` });
-    col.appendChild(el("h3", {}, name));
-    const dayTasks = tasksForDay(i);
+  DAY_CHIPS.forEach(({ short, jsDay }) => {
+    const col = el("div", { class: `day-column ${jsDay === todayJs ? "is-today" : ""}` });
+    col.appendChild(el("h3", {}, DAY_NAMES_FULL[jsDay]));
+    const dayTasks = tasksForDay(jsDay);
     if (dayTasks.length === 0) {
       col.appendChild(el("div", { class: "empty", style: "padding: 16px 4px; font-size: 0.8rem;" }, "—"));
     } else {
-      sortTasks(dayTasks).forEach(t => col.appendChild(taskCard(t, { showMeta: false })));
+      sortTasks(dayTasks).forEach(t => col.appendChild(weekTaskCard(t)));
     }
     grid.appendChild(col);
   });
@@ -528,6 +677,133 @@ function renderAddView() {
   if (today3) today3.checked = !!draft.inTodayThree;
 }
 
+// ---------- STAR CHART (Page 7) ---------------------------------
+// Renders the Progress page: This Week summary, heptagon radar
+// of attention by life area, Most/Needs callouts, area bars.
+function renderStarChartView() {
+  const tasks = tasksThisWeek();
+  const totalTasks = tasks.length;
+  const doneTasks  = tasks.filter(t => t.done).length;
+  const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
+  document.getElementById("starWeekPct").textContent  = `${pct}%`;
+  document.getElementById("starWeekBar").style.width  = `${pct}%`;
+  const meta = document.getElementById("starWeekMeta");
+  meta.textContent = totalTasks
+    ? `You completed ${doneTasks} of ${totalTasks} planned ${totalTasks === 1 ? "thing" : "things"}.`
+    : "No tasks yet this week. Add a thing to get started.";
+
+  // Score per life area, plus the max score for radar scaling.
+  const scores = attentionScoresThisWeek();
+  const maxScore = Math.max(1, ...LIFE_AREAS.map(la => scores[la.id].score));
+
+  // Build the SVG radar. 280×280 viewBox; centre (140,140); the 7
+  // axes start at the top and step clockwise. Background = four
+  // concentric heptagons at 25%/50%/75%/100%.
+  const radar = document.getElementById("starRadar");
+  radar.innerHTML = "";
+  const SIZE = 280, CX = SIZE / 2, CY = SIZE / 2, R = 95;
+  const N = LIFE_AREAS.length; // 7
+  const angleFor = i => -Math.PI / 2 + (2 * Math.PI * i) / N;
+  const ptAt = (i, ratio) => {
+    const a = angleFor(i);
+    return [CX + Math.cos(a) * R * ratio, CY + Math.sin(a) * R * ratio];
+  };
+  const pointsAttr = ratios => ratios.map((r, i) => ptAt(i, r).join(",")).join(" ");
+
+  let svg = `<svg viewBox="0 0 ${SIZE} ${SIZE}" xmlns="http://www.w3.org/2000/svg" aria-label="Life Attention Star Chart">`;
+
+  // Background grid: 4 rings.
+  [0.25, 0.5, 0.75, 1].forEach(r => {
+    svg += `<polygon class="radar-grid" points="${pointsAttr(Array(N).fill(r))}" />`;
+  });
+  // Axis lines from centre to each vertex.
+  for (let i = 0; i < N; i++) {
+    const [x, y] = ptAt(i, 1);
+    svg += `<line class="radar-axis" x1="${CX}" y1="${CY}" x2="${x}" y2="${y}" />`;
+  }
+
+  // Data polygon — scale each area's score by maxScore.
+  const ratios = LIFE_AREAS.map(la => scores[la.id].score / maxScore);
+  svg += `<polygon class="radar-shape" points="${pointsAttr(ratios)}" />`;
+  // Vertex dots.
+  ratios.forEach((r, i) => {
+    const [x, y] = ptAt(i, r);
+    svg += `<circle class="radar-vertex" cx="${x}" cy="${y}" r="3" />`;
+  });
+
+  // Axis labels — pushed slightly beyond the outer ring.
+  LIFE_AREAS.forEach((la, i) => {
+    const a = angleFor(i);
+    const lx = CX + Math.cos(a) * (R + 20);
+    const ly = CY + Math.sin(a) * (R + 20);
+    let anchor = "middle";
+    if (Math.cos(a) > 0.3) anchor = "start";
+    else if (Math.cos(a) < -0.3) anchor = "end";
+    const dy = Math.sin(a) > 0.3 ? 12 : Math.sin(a) < -0.3 ? -2 : 4;
+    svg += `<text class="radar-label" x="${lx}" y="${ly}" text-anchor="${anchor}" dy="${dy}">${la.label}</text>`;
+    svg += `<text class="radar-label-score" x="${lx}" y="${ly + 12}" text-anchor="${anchor}" dy="${dy}">${scores[la.id].score}</text>`;
+  });
+
+  svg += `</svg>`;
+  radar.innerHTML = svg;
+
+  // Most / Needs callouts.
+  // Most = highest score (any area). Needs = lowest-scoring area
+  // that HAS at least one planned task (so a fresh week doesn't
+  // ding the user for empty life areas).
+  const sortedByScore = LIFE_AREAS
+    .map(la => ({ ...la, ...scores[la.id] }))
+    .sort((a, b) => b.score - a.score);
+  const mostValueEl  = document.getElementById("starMostValue");
+  const needsValueEl = document.getElementById("starNeedsValue");
+  const mostEntry  = sortedByScore.find(e => e.score > 0);
+  if (mostEntry) {
+    mostValueEl.textContent = mostEntry.label;
+  } else {
+    mostValueEl.textContent = "Nothing done yet";
+  }
+  // For Needs: among areas with planned tasks, pick the one with the
+  // lowest score (ties broken by lowest planned).
+  const plannedNeeds = LIFE_AREAS
+    .map(la => ({ ...la, ...scores[la.id] }))
+    .filter(e => e.planned > 0)
+    .sort((a, b) => a.score - b.score || a.planned - b.planned);
+  const needsEntry = plannedNeeds[0];
+  if (needsEntry) {
+    needsValueEl.textContent = needsEntry.label;
+  } else {
+    needsValueEl.textContent = "Nothing planned";
+  }
+
+  // Attention by area — horizontal bars. Sort by score descending so
+  // the user sees their strongest areas first.
+  const areasEl = document.getElementById("starAreas");
+  areasEl.innerHTML = "";
+  const totalPlanned = LIFE_AREAS.reduce((s, la) => s + scores[la.id].planned, 0) || 1;
+  sortedByScore.forEach(entry => {
+    if (entry.planned === 0 && entry.score === 0) return; // hide untouched areas
+    const pctOfMax = Math.round((entry.score / maxScore) * 100);
+    areasEl.appendChild(el("div", {
+      class: "starchart-area-row",
+      dataset: { life: entry.id },
+    }, [
+      el("span", { class: "starchart-area-name" }, [
+        el("span", { class: "dot" }),
+        entry.label,
+      ]),
+      el("div", { class: "starchart-area-bar" }, [
+        el("div", { class: "starchart-area-bar-fill", style: `width:${pctOfMax}%` }),
+      ]),
+      el("span", { class: "starchart-area-score" }, `${entry.score} pts`),
+    ]));
+  });
+  if (!areasEl.children.length) {
+    areasEl.appendChild(el("p", { class: "section-sub", style: "margin:0;" },
+      "Complete some tasks to start filling out your star chart."));
+  }
+}
+
 function renderProgressView() {
   const tasks = tasksThisWeek();
   const total = tasks.length;
@@ -602,27 +878,240 @@ function renderProgressView() {
   });
 }
 
-// ---------- 9. CARRY-OVER BANNER --------------------------------
-function renderCarryBanner() {
-  const banner = document.getElementById("carryBanner");
-  const undone = undoneFromLastWeek();
-  const dismissedKey = `${CARRY_DISMISS_KEY}:${currentWeekKey()}`;
-  const dismissed = localStorage.getItem(dismissedKey) === "1";
-  if (undone.length === 0 || dismissed) { banner.hidden = true; return; }
+// ---------- EVIDENCE LOG (Page 8) -------------------------------
+// All-time list of every Done + Started task grouped by date,
+// newest first. Plus three stat tiles (Done / Started / Deep wins).
+//
+// Sort key: completedAt if present, else createdAt — guarantees a
+// chronological feed even for tasks added but not yet finished.
+function renderEvidenceView() {
+  // 1. Stats — across ALL tasks (not just this week).
+  const done    = state.tasks.filter(t => t.done).length;
+  const started = state.tasks.filter(t => !t.done && (t.status === "Started" || t.startedAt)).length;
+  const deep    = state.tasks.filter(t => t.done && t.effort === "Deep").length;
+  document.getElementById("evidenceDoneCount").textContent    = done;
+  document.getElementById("evidenceStartedCount").textContent = started;
+  document.getElementById("evidenceDeepCount").textContent    = deep;
 
-  banner.hidden = false;
-  document.getElementById("carryText").textContent =
-    `${undone.length} task${undone.length === 1 ? "" : "s"} from last week not done. Carry them into this week?`;
+  // 2. Day-grouped list. A task qualifies if it's Done or it's been
+  //    explicitly marked Started. Group by its activity date (the day
+  //    on the task — same field used by the week view), then sort each
+  //    group's bucket key by the date that day represents.
+  const list = document.getElementById("evidenceList");
+  list.innerHTML = "";
 
-  document.getElementById("carryConfirm").onclick = () => {
-    carryOverFromLastWeek();
-    banner.hidden = true;
-    render();
-  };
-  document.getElementById("carryDismiss").onclick = () => {
-    localStorage.setItem(dismissedKey, "1");
-    banner.hidden = true;
-  };
+  // Map weekKey + day → real Date so groups can be ordered.
+  // weekKey is like "2026-W18" — convert back to the Monday of that
+  // week, then offset by the JS day index inside that week.
+  function dateFromWeekKeyAndDay(weekKey, day) {
+    const m = /^(\d{4})-W(\d{2})$/.exec(weekKey || "");
+    if (!m) return null;
+    const year = +m[1], week = +m[2];
+    // Find the Monday of ISO week 1 of that year (Jan 4 always falls
+    // in week 1 by ISO; walk back to its Monday).
+    const jan4 = new Date(year, 0, 4);
+    const jan4Day = jan4.getDay() || 7;            // 1..7, Mon=1
+    const weekOneMon = new Date(jan4);
+    weekOneMon.setDate(jan4.getDate() - (jan4Day - 1));
+    const monday = new Date(weekOneMon);
+    monday.setDate(weekOneMon.getDate() + (week - 1) * 7);
+    // Map JS day (0=Sun..6=Sat) onto a Monday-anchored week.
+    const dayOffset = day === 0 ? 6 : day - 1;
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + dayOffset);
+    return d;
+  }
+
+  // Build groups keyed by yyyy-mm-dd, carrying the real date for sort.
+  const groups = new Map(); // key -> { date, items: [] }
+  state.tasks.forEach(t => {
+    const qualifies = t.done || t.status === "Started" || t.startedAt;
+    if (!qualifies) return;
+    const d = dateFromWeekKeyAndDay(t.weekKey, t.day);
+    if (!d) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    if (!groups.has(key)) groups.set(key, { date: d, items: [] });
+    groups.get(key).items.push(t);
+  });
+
+  // Empty state.
+  if (groups.size === 0) {
+    list.appendChild(el("div", { class: "evidence-empty" },
+      "No wins logged yet. Mark a task Done or Started and it'll show up here."));
+    return;
+  }
+
+  // Sort groups newest first.
+  const sortedGroups = [...groups.values()].sort((a, b) => b.date - a.date);
+
+  sortedGroups.forEach(group => {
+    const dayDone    = group.items.filter(t => t.done).length;
+    const dayStarted = group.items.length - dayDone;
+    const heading = el("header", { class: "evidence-day-header" }, [
+      el("span", { class: "evidence-day-date" },
+        `${DAY_NAMES_FULL[group.date.getDay()]}, ${group.date.toLocaleString(undefined, { month: "short" })} ${group.date.getDate()}`),
+      el("span", { class: "evidence-day-meta" },
+        `${dayDone} done${dayStarted ? ` · ${dayStarted} started` : ""}`),
+    ]);
+
+    const items = el("div", { class: "evidence-day-items" },
+      group.items
+        .slice()
+        .sort((a, b) => Number(b.done) - Number(a.done))
+        .map(t => {
+          const mark = el("span", { class: "evidence-item-mark" }, []);
+          mark.innerHTML = t.done
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>';
+          return el("div", {
+            class: `evidence-item evidence-item--${t.done ? "done" : "started"}`,
+          }, [
+            mark,
+            el("span", { class: "evidence-item-text" }, t.text || "(untitled)"),
+            t.lifeArea
+              ? el("span", { class: "evidence-item-life", dataset: { life: t.lifeArea } },
+                  (LIFE_AREAS.find(la => la.id === t.lifeArea) || {}).label || t.lifeArea)
+              : null,
+          ]);
+        })
+    );
+
+    list.appendChild(el("section", { class: "evidence-day" }, [heading, items]));
+  });
+}
+
+// Build a plain-text summary of done + started tasks for clipboard export.
+function buildEvidenceSummary() {
+  const done    = state.tasks.filter(t => t.done);
+  const started = state.tasks.filter(t => !t.done && (t.status === "Started" || t.startedAt));
+  const lines = [
+    "LOOK, I DID THINGS — Evidence Log",
+    "=================================",
+    `Done: ${done.length} · Started: ${started.length} · Deep wins: ${done.filter(t => t.effort === "Deep").length}`,
+    "",
+    "Done",
+    ...done.map(t => `  ✓ ${t.text}${t.lifeArea ? ` [${t.lifeArea}]` : ""}`),
+    "",
+    "Started",
+    ...started.map(t => `  ◐ ${t.text}${t.lifeArea ? ` [${t.lifeArea}]` : ""}`),
+  ];
+  return lines.join("\n");
+}
+
+// ---------- WEEKLY REVIEW (Page 9) ------------------------------
+// Reflection storage — per week, holds { proudText, protectAreas[] }.
+function loadReflections() {
+  try { return JSON.parse(localStorage.getItem(REFLECTION_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveReflections(map) {
+  localStorage.setItem(REFLECTION_KEY, JSON.stringify(map));
+}
+function getReflection(weekKey) {
+  const all = loadReflections();
+  return all[weekKey] || { proudText: "", protectAreas: [] };
+}
+function setReflection(weekKey, patch) {
+  const all = loadReflections();
+  all[weekKey] = { ...getReflection(weekKey), ...patch };
+  saveReflections(all);
+}
+
+function renderReviewView() {
+  // 1. Header — week range string.
+  document.getElementById("reviewWeekRange").textContent = weekRangeLabel();
+
+  // 2. Hero mascot — use the user's chosen mascot, fall back to duck.
+  const mascotId = localStorage.getItem(MASCOT_KEY) || "done-duck";
+  const mascotImg = document.getElementById("reviewMascotImg");
+  mascotImg.src = `assets/mascots/${mascotId}.png`;
+  mascotImg.alt = (MASCOTS.find(m => m.id === mascotId) || {}).name || "";
+
+  // 3. Stats this week + deltas vs last week.
+  const wk      = currentWeekKey();
+  const thisWeek = state.tasks.filter(t => t.weekKey === wk);
+  const done    = thisWeek.filter(t => t.done).length;
+  const started = thisWeek.filter(t => !t.done && (t.status === "Started" || t.startedAt)).length;
+  const deep    = thisWeek.filter(t => t.done && t.effort === "Deep").length;
+
+  // Last week key — walk back 7 days, recompute weekKey.
+  const lastWeekDate = new Date(); lastWeekDate.setDate(lastWeekDate.getDate() - 7);
+  const lastWk = getWeekKey(lastWeekDate);
+  const last = state.tasks.filter(t => t.weekKey === lastWk);
+  const lastDone    = last.filter(t => t.done).length;
+  const lastStarted = last.filter(t => !t.done && (t.status === "Started" || t.startedAt)).length;
+  const lastDeep    = last.filter(t => t.done && t.effort === "Deep").length;
+
+  function fmtDelta(now, prev) {
+    // Only show delta if there's prior-week data; otherwise blank so
+    // the row still aligns vertically (the CSS reserves min-height).
+    if (prev <= 0) return "";
+    const diff = now - prev;
+    if (diff === 0) return "Same as last week";
+    const pct = Math.round((diff / prev) * 100);
+    return `${diff > 0 ? "+" : ""}${pct}% from last week`;
+  }
+
+  document.getElementById("reviewDoneCount").textContent    = done;
+  document.getElementById("reviewStartedCount").textContent = started;
+  document.getElementById("reviewDeepCount").textContent    = deep;
+  document.getElementById("reviewDoneDelta").textContent    = fmtDelta(done,    lastDone);
+  document.getElementById("reviewStartedDelta").textContent = fmtDelta(started, lastStarted);
+  document.getElementById("reviewDeepDelta").textContent    = fmtDelta(deep,    lastDeep);
+
+  // 4. Most / Least attention. Reuse attentionScoresThisWeek().
+  const scores = attentionScoresThisWeek();
+  const ranked = LIFE_AREAS
+    .map(la => ({ ...la, ...scores[la.id] }))
+    .sort((a, b) => b.score - a.score);
+  const mostEl   = document.getElementById("reviewMostValue");
+  const mostMeta = document.getElementById("reviewMostMeta");
+  const top = ranked.find(e => e.score > 0);
+  if (top) {
+    mostEl.textContent   = top.label;
+    mostMeta.textContent = "Keep going!";
+  } else {
+    mostEl.textContent   = "Nothing yet";
+    mostMeta.textContent = "";
+  }
+  const leastEl   = document.getElementById("reviewLeastValue");
+  const leastMeta = document.getElementById("reviewLeastMeta");
+  // Lowest-scoring area that had ANY planned activity — same pattern
+  // as the star chart Needs Attention callout.
+  const planned = ranked.filter(e => e.planned > 0).sort((a, b) => a.score - b.score);
+  if (planned.length) {
+    leastEl.textContent   = planned[0].label;
+    leastMeta.textContent = planned[0].score === 0 ? "Try a small win" : "Room to grow";
+  } else {
+    leastEl.textContent   = "Nothing planned";
+    leastMeta.textContent = "";
+  }
+
+  // 5. Proud-of journal — populate from saved reflection.
+  const reflection = getReflection(wk);
+  document.getElementById("reviewProudText").value = reflection.proudText || "";
+
+  // 6. Protect-next-week pills. Build from LIFE_AREAS; selected
+  //    state comes from reflection.protectAreas.
+  const pills = document.getElementById("reviewProtectPills");
+  pills.innerHTML = "";
+  LIFE_AREAS.forEach(la => {
+    const selected = (reflection.protectAreas || []).includes(la.id);
+    const btn = el("button", {
+      class: `review-protect-pill ${selected ? "is-selected" : ""}`,
+      type: "button",
+      dataset: { life: la.id },
+      onclick: () => {
+        const cur = getReflection(wk).protectAreas || [];
+        const next = cur.includes(la.id)
+          ? cur.filter(x => x !== la.id)
+          : [...cur, la.id];
+        setReflection(wk, { protectAreas: next });
+        renderReviewView();
+      },
+    }, la.label);
+    pills.appendChild(btn);
+  });
 }
 
 // ---------- 10. NAVIGATION --------------------------------------
@@ -641,21 +1130,22 @@ function setView(view) {
 }
 
 // ---------- 11. MASTER RENDER -----------------------------------
-// Called any time state changes. Re-renders only the active view
-// (plus the banner, which is global). Keeps everything in sync.
+// Called any time state changes. Re-renders only the active view.
+// Keeps everything in sync.
 function render() {
   document.getElementById("weekLabel").textContent = currentWeekLabel();
-  renderCarryBanner();
   switch (state.activeView) {
-    case "welcome":  /* static markup, nothing to re-render yet */ break;
-    case "signup":   /* static markup, no dynamic rendering yet */ break;
-    case "signin":   /* static markup, no dynamic rendering yet */ break;
-    case "choose":   renderChooseView(); break;
-    case "week":     renderWeekView(); break;
-    case "today":    renderTodayView(); break;
-    case "add":      renderAddView(); break;
-    case "progress": renderProgressView(); break;
-    case "review":   /* stub — will be built in Page 7 */ break;
+    case "welcome":   /* static markup, nothing to re-render yet */ break;
+    case "signup":    /* static markup, no dynamic rendering yet */ break;
+    case "signin":    /* static markup, no dynamic rendering yet */ break;
+    case "choose":    renderChooseView(); break;
+    case "week":      renderWeekView(); break;
+    case "today":     renderTodayView(); break;
+    case "add":       renderAddView(); break;
+    case "progress":  renderProgressView(); break;
+    case "starchart": renderStarChartView(); break;
+    case "evidence":  renderEvidenceView(); break;
+    case "review":    renderReviewView(); break;
   }
 }
 
@@ -779,7 +1269,65 @@ document.getElementById("chooseBack").addEventListener("click", () => {
 document.getElementById("chooseContinue").addEventListener("click", () => {
   if (!state.chosenMascot) return;
   localStorage.setItem(MASCOT_KEY, state.chosenMascot);
-  setView("today");
+  setView("week");
+});
+
+// ---------- EVIDENCE LOG (Page 8) event wiring ------------------
+// Export and share both copy a plain-text summary to the clipboard.
+function copyEvidenceSummary(btnEl) {
+  const text = buildEvidenceSummary();
+  const flash = () => {
+    if (!btnEl) return;
+    btnEl.classList.add("is-copied");
+    setTimeout(() => btnEl.classList.remove("is-copied"), 1200);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(flash, () => alert("Couldn't copy to clipboard.\n\n" + text));
+  } else {
+    // Older browsers — fall back to a hidden textarea + execCommand.
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); flash(); } catch { alert(text); }
+    document.body.removeChild(ta);
+  }
+}
+document.getElementById("evidenceExportBtn").addEventListener("click", (e) => copyEvidenceSummary(e.currentTarget));
+document.getElementById("evidenceShareBtn").addEventListener("click",  (e) => copyEvidenceSummary(e.currentTarget));
+
+// ---------- WEEKLY REVIEW (Page 9) event wiring -----------------
+// Proud-of card expands/collapses the journal textarea below it.
+document.getElementById("reviewProudCard").addEventListener("click", () => {
+  const card  = document.getElementById("reviewProudCard");
+  const input = document.getElementById("reviewProudInput");
+  const expanded = card.getAttribute("aria-expanded") === "true";
+  card.setAttribute("aria-expanded", expanded ? "false" : "true");
+  input.hidden = expanded;
+  if (!expanded) document.getElementById("reviewProudText").focus();
+});
+
+// Save the journal text on input — light debounce so we're not
+// writing to localStorage on every keystroke.
+let proudSaveTimer = null;
+document.getElementById("reviewProudText").addEventListener("input", (e) => {
+  clearTimeout(proudSaveTimer);
+  const val = e.target.value;
+  proudSaveTimer = setTimeout(() => {
+    setReflection(currentWeekKey(), { proudText: val });
+  }, 300);
+});
+
+// "Plan next week" — flushes any pending journal save and shows a
+// "Saved" confirmation banner. Per design choice: no navigation.
+document.getElementById("reviewPlanBtn").addEventListener("click", () => {
+  clearTimeout(proudSaveTimer);
+  setReflection(currentWeekKey(), {
+    proudText: document.getElementById("reviewProudText").value,
+  });
+  const msg = document.getElementById("reviewSavedMsg");
+  msg.hidden = false;
+  setTimeout(() => { msg.hidden = true; }, 2200);
 });
 
 // ---------- 13. SERVICE WORKER REGISTRATION ---------------------
@@ -805,7 +1353,7 @@ state.tasks = loadTasks();
 const hasSeenWelcome = localStorage.getItem("lidt_welcome_seen") === "1";
 const hasMascot      = !!localStorage.getItem(MASCOT_KEY);
 let initialView;
-if (hasMascot)             initialView = "today";
+if (hasMascot)             initialView = "week";
 else if (hasSeenWelcome)   initialView = "choose";
 else                       initialView = "welcome";
 setView(initialView);

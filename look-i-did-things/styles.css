@@ -104,34 +104,6 @@ input, select, textarea, button { font-family: inherit; font-size: 1rem; }
 .brand { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); }
 .week-label { color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; }
 
-/* Carry-over banner (shows only when previous week has incomplete tasks) */
-.carry-banner {
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.carry-banner p { margin: 0; font-size: 0.9rem; }
-.carry-banner button {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 8px 14px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.carry-banner .dismiss {
-  background: transparent;
-  color: var(--text-muted);
-  padding: 4px 8px;
-}
-
 /* Day tabs (horizontal scroll on mobile) */
 .day-tabs {
   display: flex;
@@ -393,6 +365,7 @@ input, select, textarea, button { font-family: inherit; font-size: 1rem; }
   z-index: 20;
   box-shadow: 0 -2px 14px rgba(20, 30, 40, 0.04);
 }
+.nav-btn .icon svg { width: 22px; height: 22px; display: block; }
 .nav-btn {
   background: transparent;
   border: none;
@@ -444,8 +417,7 @@ body.is-onboarding {
   padding-bottom: 0;
 }
 body.is-onboarding .header,
-body.is-onboarding .bottom-nav,
-body.is-onboarding .carry-banner {
+body.is-onboarding .bottom-nav {
   display: none !important;
 }
 body.is-onboarding .app {
@@ -1079,7 +1051,6 @@ body.is-onboarding .app {
     top: 0;
     padding: 16px 0;
   }
-  .carry-banner { grid-column: 1 / -1; }
   .bottom-nav {
     position: static;
     grid-column: 1;
@@ -1464,4 +1435,1290 @@ body.is-onboarding .app {
     width: 110px;
     height: 110px;
   }
+}
+
+/* ============================================================
+   THIS WEEK (Page 5)
+   ----------------------------------------------------------------
+   Title + week range, hero with speech bubble + corner duck, the
+   Planned Attention card (Top-3 task list), Mon-Sun date strip,
+   day section, encouragement footer. Desktop reuses the existing
+   .week-grid below all of this.
+   ============================================================ */
+
+/* Display rules use the .is-active form so they only kick in when
+   the view is the active one — without this, .view-week's display
+   value overrides the base .view { display: none } and the page
+   stacks under others on view switch. */
+.view-week.is-active {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Header — big "This Week" title + small week range underneath. */
+.week-header {
+  margin-bottom: -4px;
+}
+.week-title {
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+.week-range {
+  margin: 4px 0 0;
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+/* Hero — speech bubble on the left, corner duck on the right. */
+.week-hero {
+  position: relative;
+  min-height: 92px;
+  padding-right: 96px;
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+.speech-bubble {
+  position: relative;
+  background: #d8efd1;
+  color: var(--life-health-ink);
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  max-width: 240px;
+  line-height: 1.3;
+}
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 10px solid #d8efd1;
+}
+.week-mascot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---------- Planned Attention card ---------------------------- */
+.attention-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 14px 12px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.attention-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.attention-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.attention-sub {
+  background: var(--life-creative-bg);
+  color: var(--life-creative-ink);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+/* 3-column life-area mini-card grid. Each card has an icon, a
+   name, a coloured progress bar, and a small "done / total"
+   label. Matches the screenshot's planned-attention layout. */
+.attention-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.attention-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  min-width: 0;
+}
+.attention-tile-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.attention-tile-icon svg { width: 16px; height: 16px; }
+.attention-tile-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.attention-tile-bar {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.attention-tile-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 200ms ease;
+}
+.attention-tile-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Per-life-area icon bubble + bar fill colour. */
+.attention-tile[data-life="Creative"]      .attention-tile-icon { background: var(--life-creative-bg);  color: var(--life-creative-ink); }
+.attention-tile[data-life="Creative"]      .attention-tile-bar-fill { background: var(--life-creative-ink); }
+.attention-tile[data-life="Health"]        .attention-tile-icon { background: var(--life-health-bg);    color: var(--life-health-ink); }
+.attention-tile[data-life="Health"]        .attention-tile-bar-fill { background: var(--life-health-ink); }
+.attention-tile[data-life="Learning"]      .attention-tile-icon { background: var(--life-learning-bg);  color: var(--life-learning-ink); }
+.attention-tile[data-life="Learning"]      .attention-tile-bar-fill { background: var(--life-learning-ink); }
+.attention-tile[data-life="Admin"]         .attention-tile-icon { background: var(--life-admin-bg);     color: var(--life-admin-ink); }
+.attention-tile[data-life="Admin"]         .attention-tile-bar-fill { background: var(--life-admin-ink); }
+.attention-tile[data-life="Work"]          .attention-tile-icon { background: var(--life-work-bg);      color: var(--life-work-ink); }
+.attention-tile[data-life="Work"]          .attention-tile-bar-fill { background: var(--life-work-ink); }
+.attention-tile[data-life="Relationships"] .attention-tile-icon { background: var(--life-social-bg);    color: var(--life-social-ink); }
+.attention-tile[data-life="Relationships"] .attention-tile-bar-fill { background: var(--life-social-ink); }
+.attention-tile[data-life="Rest"]          .attention-tile-icon { background: var(--life-rest-bg);      color: var(--life-rest-ink); }
+.attention-tile[data-life="Rest"]          .attention-tile-bar-fill { background: var(--life-rest-ink); }
+
+/* Empty-state when nothing is marked Top 3 yet. */
+.attention-empty {
+  grid-column: 1 / -1;
+  padding: 14px 12px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ---------- Mon-Sun date strip -------------------------------- */
+/* Banner container — the whole row of dates sits inside a single
+   cream rounded bar (matches the screenshot). */
+.date-strip-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 6px;
+  box-shadow: 0 1px 2px rgba(20, 30, 40, 0.04);
+}
+.date-strip {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+.date-chip {
+  flex: 1;
+  appearance: none;
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 2px;
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  transition: background 140ms ease, color 140ms ease;
+}
+.date-chip:hover {
+  background: var(--surface-2);
+}
+.date-chip-day {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.date-chip-num {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.date-chip.is-today .date-chip-num {
+  color: var(--accent);
+}
+.date-chip.is-selected {
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(31, 107, 92, 0.25);
+}
+.date-chip.is-selected .date-chip-day,
+.date-chip.is-selected .date-chip-num {
+  color: var(--accent-ink);
+}
+
+/* ---------- Selected day section ------------------------------ */
+.day-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.day-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.day-section-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.day-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--life-health-bg);
+  color: var(--life-health-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+.day-section-link:hover { filter: brightness(0.96); }
+
+.day-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- New task card (Page 5 design) --------------------- */
+/* Wireframe-faithful card: round radio-style check on the left,
+   title in the middle, life-area + effort mini-chips below the
+   title, delete tucked to the right. */
+.task-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(20, 30, 40, 0.04);
+  position: relative;
+}
+.task-card.is-done .task-card-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.task-card-check {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: transparent;
+  padding: 0;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.task-card-check:hover { border-color: var(--accent); }
+.task-card.is-done .task-card-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.task-card-check svg { width: 14px; height: 14px; }
+
+.task-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.task-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+.task-card-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.task-card-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.task-card-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* Life-area pill colours — match the Life Area chips on Page 6. */
+.task-card-pill--life[data-life="Creative"]      { background: var(--life-creative-bg);  color: var(--life-creative-ink); }
+.task-card-pill--life[data-life="Creative"] .dot { background: var(--life-creative-ink); }
+.task-card-pill--life[data-life="Health"]        { background: var(--life-health-bg);    color: var(--life-health-ink); }
+.task-card-pill--life[data-life="Health"] .dot   { background: var(--life-health-ink); }
+.task-card-pill--life[data-life="Learning"]      { background: var(--life-learning-bg);  color: var(--life-learning-ink); }
+.task-card-pill--life[data-life="Learning"] .dot { background: var(--life-learning-ink); }
+.task-card-pill--life[data-life="Admin"]         { background: var(--life-admin-bg);     color: var(--life-admin-ink); }
+.task-card-pill--life[data-life="Admin"] .dot    { background: var(--life-admin-ink); }
+.task-card-pill--life[data-life="Work"]          { background: var(--life-work-bg);      color: var(--life-work-ink); }
+.task-card-pill--life[data-life="Work"] .dot     { background: var(--life-work-ink); }
+.task-card-pill--life[data-life="Relationships"] { background: var(--life-social-bg);    color: var(--life-social-ink); }
+.task-card-pill--life[data-life="Relationships"] .dot { background: var(--life-social-ink); }
+.task-card-pill--life[data-life="Rest"]          { background: var(--life-rest-bg);      color: var(--life-rest-ink); }
+.task-card-pill--life[data-life="Rest"] .dot     { background: var(--life-rest-ink); }
+
+/* Effort pill colours — match the Page 6 effort pills. */
+.task-card-pill--effort[data-effort="Light"]  { background: var(--life-health-bg);   color: var(--life-health-ink); }
+.task-card-pill--effort[data-effort="Medium"] { background: var(--life-rest-bg);     color: var(--life-rest-ink); }
+.task-card-pill--effort[data-effort="Deep"]   { background: var(--life-learning-bg); color: var(--life-learning-ink); }
+.task-card-delete {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.task-card-delete:hover { color: var(--priority-high); background: var(--surface-2); }
+
+/* Life-area dot colour mapping (used in task pills and attention rows). */
+.area-dot-Creative      { background: var(--life-creative-ink); }
+.area-dot-Health        { background: var(--life-health-ink); }
+.area-dot-Learning      { background: var(--life-learning-ink); }
+.area-dot-Admin         { background: var(--life-admin-ink); }
+.area-dot-Work          { background: var(--life-work-ink); }
+.area-dot-Relationships { background: var(--life-social-ink); }
+.area-dot-Rest          { background: var(--life-rest-ink); }
+
+/* ---------- Encouragement footer card ------------------------- */
+.encouragement-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--life-rest-bg);
+  color: var(--life-rest-ink);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+.encouragement-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff1c0;
+  color: #c08a18;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.encouragement-icon svg { width: 18px; height: 18px; }
+.encouragement-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-size: 0.88rem;
+}
+.encouragement-text strong { font-weight: 700; }
+.encouragement-text span   { color: var(--life-rest-ink); opacity: 0.85; font-size: 0.82rem; }
+
+/* On mobile, hide the desktop 7-column grid entirely. */
+.view-week .week-grid { display: none; }
+
+/* Desktop: re-show the week grid below the new components and
+   constrain the column width for the rest of the page. */
+@media (min-width: 768px) {
+  .view-week {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .view-week .week-grid {
+    display: grid;
+    max-width: none;
+    margin-top: 18px;
+  }
+}
+
+/* ============================================================
+   STUB VIEWS (Evidence Log — Star Chart is now built)
+   ============================================================ */
+.view-stub {
+  padding: 24px 4px;
+  text-align: center;
+}
+.stub-title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+.stub-sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* ============================================================
+   STAR CHART (Page 7)
+   ----------------------------------------------------------------
+   Progress page: title + corner duck, This Week completion card,
+   Life Attention Star Chart (SVG heptagon), Most/Needs callouts,
+   per-area attention bars.
+   ============================================================ */
+.view-starchart.is-active {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Header */
+.starchart-header {
+  position: relative;
+  padding-right: 90px;
+  margin-bottom: -2px;
+}
+.starchart-title {
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+.starchart-sub {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+.starchart-mascot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Shared card-y header for the section titles inside Page 7. */
+.starchart-section-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 10px;
+}
+
+/* This Week completion card */
+.starchart-week-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.starchart-week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.starchart-week-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.starchart-week-pct {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.starchart-week-meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Star Chart card */
+.starchart-radar-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+}
+.starchart-radar {
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+.starchart-radar svg {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+
+/* Radar SVG visual tokens (referenced from JS). */
+.radar-grid {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.radar-axis {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.radar-shape {
+  fill: var(--life-creative-bg);
+  fill-opacity: 0.6;
+  stroke: var(--life-creative-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.radar-vertex {
+  fill: var(--life-creative-ink);
+}
+.radar-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text);
+}
+.radar-label-score {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+
+/* Most / Needs callout cards */
+.starchart-callouts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.starchart-callout {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: var(--shadow-card);
+}
+.starchart-callout--most {
+  background: var(--life-creative-bg);
+  border-color: var(--life-creative-bg);
+}
+.starchart-callout--most .starchart-callout-label { color: var(--life-creative-ink); }
+.starchart-callout--most .starchart-callout-value { color: var(--life-creative-ink); }
+.starchart-callout--needs {
+  background: var(--life-rest-bg);
+  border-color: var(--life-rest-bg);
+}
+.starchart-callout--needs .starchart-callout-label { color: var(--life-rest-ink); }
+.starchart-callout--needs .starchart-callout-value { color: var(--life-rest-ink); }
+.starchart-callout-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+.starchart-callout-value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+/* Attention by area — horizontal bar list */
+.starchart-areas-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+}
+.starchart-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.starchart-area-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 38px;
+  align-items: center;
+  gap: 10px;
+}
+.starchart-area-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.starchart-area-name .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.starchart-area-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.starchart-area-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 220ms ease;
+}
+.starchart-area-score {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Per-life-area colour mapping for the area bars + dots. */
+.starchart-area-row[data-life="Creative"]      .dot,
+.starchart-area-row[data-life="Creative"]      .starchart-area-bar-fill { background: var(--life-creative-ink); }
+.starchart-area-row[data-life="Health"]        .dot,
+.starchart-area-row[data-life="Health"]        .starchart-area-bar-fill { background: var(--life-health-ink); }
+.starchart-area-row[data-life="Learning"]      .dot,
+.starchart-area-row[data-life="Learning"]      .starchart-area-bar-fill { background: var(--life-learning-ink); }
+.starchart-area-row[data-life="Admin"]         .dot,
+.starchart-area-row[data-life="Admin"]         .starchart-area-bar-fill { background: var(--life-admin-ink); }
+.starchart-area-row[data-life="Work"]          .dot,
+.starchart-area-row[data-life="Work"]          .starchart-area-bar-fill { background: var(--life-work-ink); }
+.starchart-area-row[data-life="Relationships"] .dot,
+.starchart-area-row[data-life="Relationships"] .starchart-area-bar-fill { background: var(--life-social-ink); }
+.starchart-area-row[data-life="Rest"]          .dot,
+.starchart-area-row[data-life="Rest"]          .starchart-area-bar-fill { background: var(--life-rest-ink); }
+
+@media (min-width: 768px) {
+  .view-starchart {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .starchart-mascot { width: 110px; height: 110px; }
+}
+
+/* ============================================================
+   EVIDENCE LOG (Page 8)
+   ----------------------------------------------------------------
+   Title row with share icon, big "Look, you did things." headline
+   beside the Task Raccoon, three pastel stat tiles, an Export pill,
+   then day-grouped task list. All-time scope so the page gets more
+   rewarding the longer you use the app.
+   ============================================================ */
+.view-evidence.is-active {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.evidence-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: -2px;
+}
+.evidence-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+.evidence-share-btn {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease;
+}
+.evidence-share-btn svg { width: 22px; height: 22px; }
+.evidence-share-btn:hover { background: var(--accent-soft); }
+
+/* Hero — text on the left, raccoon overlay on the right. */
+.evidence-hero {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-height: 150px;
+  padding-right: 130px;
+}
+.evidence-hero-text { flex: 1; }
+.evidence-hero-title {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.05;
+}
+.evidence-hero-sub {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.evidence-mascot {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  width: 138px;
+  height: 138px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Stat tiles row */
+.evidence-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.evidence-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+.evidence-stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.evidence-stat-icon svg { width: 18px; height: 18px; }
+.evidence-stat--done    .evidence-stat-icon { background: var(--life-health-bg);   color: var(--life-health-ink); }
+.evidence-stat--started .evidence-stat-icon { background: var(--life-learning-bg); color: var(--life-learning-ink); }
+.evidence-stat--deep    .evidence-stat-icon { background: var(--life-rest-bg);     color: var(--life-rest-ink); }
+.evidence-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.evidence-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Export / Copy Summary pill */
+.evidence-export-btn {
+  align-self: flex-end;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 150ms ease;
+}
+.evidence-export-btn svg { width: 14px; height: 14px; }
+.evidence-export-btn:hover { background: var(--accent-soft); }
+.evidence-export-btn.is-copied {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Day-grouped list */
+.evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.evidence-day {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+.evidence-day-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.evidence-day-date {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.evidence-day-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.evidence-day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.evidence-item {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.evidence-item-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.evidence-item-mark svg { width: 12px; height: 12px; }
+.evidence-item--done    .evidence-item-mark { background: var(--life-health-ink);   color: #fff; }
+.evidence-item--started .evidence-item-mark { background: var(--life-learning-bg); color: var(--life-learning-ink); }
+.evidence-item-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.evidence-item--started .evidence-item-text { color: var(--text-muted); }
+.evidence-item-life {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+/* Per-area chip colours, reuses life-area tokens */
+.evidence-item-life[data-life="Creative"]      { background: var(--life-creative-bg);   color: var(--life-creative-ink); }
+.evidence-item-life[data-life="Health"]        { background: var(--life-health-bg);     color: var(--life-health-ink); }
+.evidence-item-life[data-life="Learning"]      { background: var(--life-learning-bg);   color: var(--life-learning-ink); }
+.evidence-item-life[data-life="Admin"]         { background: var(--life-admin-bg);      color: var(--life-admin-ink); }
+.evidence-item-life[data-life="Work"]          { background: var(--life-work-bg);       color: var(--life-work-ink); }
+.evidence-item-life[data-life="Relationships"] { background: var(--life-social-bg);     color: var(--life-social-ink); }
+.evidence-item-life[data-life="Rest"]          { background: var(--life-rest-bg);       color: var(--life-rest-ink); }
+
+.evidence-empty {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+@media (min-width: 768px) {
+  .view-evidence { max-width: 560px; margin: 0 auto; }
+  .evidence-mascot { width: 158px; height: 158px; }
+}
+
+/* ============================================================
+   WEEKLY REVIEW (Page 9)
+   ----------------------------------------------------------------
+   Title + week range, hero with user's chosen mascot, three big
+   stat circles, Most/Least attention card pair, expandable proud
+   prompt, Protect-next-week chip chooser, and a Plan next week CTA.
+   ============================================================ */
+.view-review.is-active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-header {
+  text-align: center;
+  margin-bottom: -4px;
+}
+.review-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+.review-sub {
+  margin: 4px 0 0;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* Hero — mascot above headline */
+.review-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+}
+.review-mascot {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+.review-hero-text {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.review-hero-sparkle {
+  width: 16px;
+  height: 16px;
+  color: var(--life-creative-ink);
+  fill: var(--life-creative-bg);
+}
+
+/* Stat circles row */
+.review-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.review-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+.review-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.review-stat-icon svg { width: 20px; height: 20px; }
+.review-stat-icon--done    { background: var(--life-health-bg);   color: var(--life-health-ink); }
+.review-stat-icon--started { background: var(--life-rest-bg);     color: var(--life-rest-ink); }
+.review-stat-icon--deep    { background: var(--life-work-bg);     color: var(--life-work-ink); }
+
+.review-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.review-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.review-stat-delta {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--life-health-ink);
+  margin-top: 2px;
+  min-height: 14px;
+}
+.review-stat-delta:empty::before { content: " "; }
+
+/* Attention pair */
+.review-attention {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.review-attention-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.review-attention-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.review-attention-value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.review-attention-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+.review-attention-card--most .review-attention-meta  { background: var(--life-health-bg); color: var(--life-health-ink); }
+.review-attention-card--least .review-attention-meta { background: var(--life-admin-bg);  color: var(--life-admin-ink);  }
+.review-attention-meta:empty { display: none; }
+
+/* Card rows — proud + protect */
+.review-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+}
+button.review-card { cursor: pointer; }
+button.review-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.review-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--life-rest-bg);
+  color: var(--life-rest-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.review-card-icon svg { width: 20px; height: 20px; }
+.review-card--protect .review-card-icon {
+  background: var(--life-creative-bg);
+  color: var(--life-creative-ink);
+  align-self: start;
+}
+.review-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.review-card-title {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.review-card-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.review-card-chev {
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 200ms ease;
+}
+.review-card-chev svg { width: 16px; height: 16px; }
+.review-card[aria-expanded="true"] .review-card-chev { transform: rotate(90deg); }
+
+.review-proud-input {
+  margin-top: -8px;
+}
+.review-proud-input textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--text);
+  resize: vertical;
+  min-height: 80px;
+  box-shadow: var(--shadow-card);
+}
+.review-proud-input textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Protect-next-week pill chips */
+.review-protect-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.review-protect-pill {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, background 150ms ease;
+}
+.review-protect-pill:hover { transform: translateY(-1px); }
+.review-protect-pill.is-selected[data-life="Creative"]      { background: var(--life-creative-bg);   color: var(--life-creative-ink);   border-color: var(--life-creative-ink); }
+.review-protect-pill.is-selected[data-life="Health"]        { background: var(--life-health-bg);     color: var(--life-health-ink);     border-color: var(--life-health-ink); }
+.review-protect-pill.is-selected[data-life="Learning"]      { background: var(--life-learning-bg);   color: var(--life-learning-ink);   border-color: var(--life-learning-ink); }
+.review-protect-pill.is-selected[data-life="Admin"]         { background: var(--life-admin-bg);      color: var(--life-admin-ink);      border-color: var(--life-admin-ink); }
+.review-protect-pill.is-selected[data-life="Work"]          { background: var(--life-work-bg);       color: var(--life-work-ink);       border-color: var(--life-work-ink); }
+.review-protect-pill.is-selected[data-life="Relationships"] { background: var(--life-social-bg);     color: var(--life-social-ink);     border-color: var(--life-social-ink); }
+.review-protect-pill.is-selected[data-life="Rest"]          { background: var(--life-rest-bg);       color: var(--life-rest-ink);       border-color: var(--life-rest-ink); }
+
+/* Plan next week CTA — full-width teal pill with yellow arrow */
+.btn-plan-next-week {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 22px;
+  font-size: 1rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  box-shadow: var(--shadow-float);
+  transition: transform 120ms ease, filter 150ms ease;
+}
+.btn-plan-next-week:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btn-plan-next-week .btn-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--mascot-yellow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-saved-msg {
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--life-health-ink);
+  background: var(--life-health-bg);
+  border-radius: 999px;
+  padding: 10px 16px;
+  align-self: center;
+}
+
+@media (min-width: 768px) {
+  .view-review { max-width: 560px; margin: 0 auto; }
+  .review-mascot { width: 160px; height: 160px; }
 }
