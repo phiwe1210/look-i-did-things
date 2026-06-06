@@ -87,7 +87,7 @@ input, select, textarea, button { font-family: inherit; font-size: 1rem; }
 .app {
   max-width: 480px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 0 16px 16px; /* no top padding — header bleeds to the very top */
 }
 
 /* Header (sticky so the week label stays visible while scrolling) */
@@ -1044,7 +1044,7 @@ body.is-onboarding .app {
     display: grid;
     grid-template-columns: 220px 1fr;
     gap: 32px;
-    padding: 24px 32px;
+    padding: 0 32px 32px; /* no top padding — header fills from the very top */
   }
   .header {
     grid-column: 1 / -1;
