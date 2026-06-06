@@ -1,0 +1,50 @@
+# ================================================================
+# Look, I Did Things — GitHub Pages deploy
+# ----------------------------------------------------------------
+# Runs on every push to main. Publishes the look-i-did-things/
+# folder (the actual app) to GitHub Pages.
+#
+# Live URL after first deploy:
+#   https://phiwe1210.github.io/look-i-did-things/
+# ================================================================
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Allow triggering manually from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy runs at a time; don't cancel in-progress deploys.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload app folder as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Only publish the inner app folder, not the whole repo.
+          path: look-i-did-things/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

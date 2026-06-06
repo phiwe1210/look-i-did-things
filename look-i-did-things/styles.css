@@ -95,14 +95,15 @@ input, select, textarea, button { font-family: inherit; font-size: 1rem; }
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--bg);
-  padding: 8px 0 12px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
+  background: var(--accent);
+  /* Bleed edge-to-edge past the .app padding */
+  margin: 0 -16px 20px;
+  padding: 14px 20px 16px;
+  box-shadow: 0 2px 12px rgba(31, 107, 92, 0.18);
 }
-.header-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.brand { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); }
-.week-label { color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.header-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-family: var(--font-display); font-size: 1.45rem; color: var(--bg); letter-spacing: -0.01em; }
+.week-label { color: rgba(251, 246, 233, 0.7); font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; }
 
 /* Day tabs (horizontal scroll on mobile) */
 .day-tabs {
@@ -1049,7 +1050,9 @@ body.is-onboarding .app {
     grid-column: 1 / -1;
     position: sticky;
     top: 0;
-    padding: 16px 0;
+    /* Bleed past the .app desktop padding (32px each side) */
+    margin: 0 -32px 24px;
+    padding: 16px 32px 18px;
   }
   .bottom-nav {
     position: static;
@@ -1741,15 +1744,24 @@ body.is-onboarding .app {
   gap: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
   border-radius: 14px;
   padding: 12px 14px;
   box-shadow: 0 1px 2px rgba(20, 30, 40, 0.04);
   position: relative;
+  cursor: default;
 }
-.task-card.is-done .task-card-title {
+/* Priority left border accent */
+.task-card[data-priority="High"]   { border-left-color: var(--priority-high); }
+.task-card[data-priority="Medium"] { border-left-color: var(--priority-mid); }
+.task-card[data-priority="Low"]    { border-left-color: var(--priority-low); }
+
+.task-card.is-done .task-card-title,
+.task-card.is-dropped .task-card-title {
   text-decoration: line-through;
   color: var(--text-muted);
 }
+.task-card.is-moved { opacity: 0.65; }
 .task-card-check {
   appearance: none;
   width: 26px;
@@ -1766,12 +1778,29 @@ body.is-onboarding .app {
   transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 }
 .task-card-check:hover { border-color: var(--accent); }
-.task-card.is-done .task-card-check {
+.task-card-check svg { width: 14px; height: 14px; }
+
+/* Status-driven check button states */
+.task-card[data-status="In Progress"] .task-card-check {
+  border-color: var(--priority-mid);
+  background: rgba(232, 169, 59, 0.12);
+  color: var(--priority-mid);
+}
+.task-card[data-status="Done"] .task-card-check {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
 }
-.task-card-check svg { width: 14px; height: 14px; }
+.task-card[data-status="Moved"] .task-card-check {
+  border-color: var(--life-learning-ink);
+  background: var(--life-learning-bg);
+  color: var(--life-learning-ink);
+}
+.task-card[data-status="Dropped"] .task-card-check {
+  border-color: var(--text-muted);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
 
 .task-card-body {
   flex: 1;
@@ -2721,4 +2750,102 @@ button.review-card:focus-visible { outline: 2px solid var(--accent); outline-off
 @media (min-width: 768px) {
   .view-review { max-width: 560px; margin: 0 auto; }
   .review-mascot { width: 160px; height: 160px; }
+}
+
+/* ============================================================
+   TASK STATUS PILL
+   ----------------------------------------------------------------
+   Small tappable pill on each task card showing current status.
+   Tapping it is a shortcut to the cycle (Not Started → In Progress
+   → Done → Not Started). Moved and Dropped are set via the edit sheet.
+   ============================================================ */
+.task-card-pill--status { cursor: pointer; user-select: none; }
+.task-card-pill--status[data-status="Not Started"] { background: var(--surface-2); color: var(--text-muted); }
+.task-card-pill--status[data-status="In Progress"] { background: #fef3cd; color: #8a6510; }
+.task-card-pill--status[data-status="Done"]        { background: var(--life-health-bg); color: var(--life-health-ink); }
+.task-card-pill--status[data-status="Moved"]       { background: var(--life-learning-bg); color: var(--life-learning-ink); }
+.task-card-pill--status[data-status="Dropped"]     { background: var(--surface-2); color: var(--text-muted); text-decoration: line-through; }
+
+/* ============================================================
+   EDIT TASK BOTTOM SHEET
+   ----------------------------------------------------------------
+   Slide-up drawer for editing a task after creation. The overlay
+   dims the rest of the app; the sheet itself slides in from the
+   bottom. On desktop it centers like a modal.
+   ============================================================ */
+.edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 20, 30, 0.45);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeOverlay 180ms ease forwards;
+}
+.edit-overlay[hidden] { display: none; }
+
+@keyframes fadeOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.edit-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 88dvh;
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+  padding: 0 20px 32px;
+  overflow-y: auto;
+  animation: slideSheet 220ms ease forwards;
+  scrollbar-width: none;
+}
+.edit-sheet::-webkit-scrollbar { display: none; }
+
+@keyframes slideSheet {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Drag handle indicator */
+.edit-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  margin: 12px auto 20px;
+}
+
+.edit-sheet-heading {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 18px;
+}
+
+.edit-sheet .field { margin-bottom: 16px; }
+
+.edit-sheet .add-section { margin-bottom: 14px; }
+
+/* Two-column action row at the bottom of the sheet */
+.edit-sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+.edit-sheet-actions .btn-primary,
+.edit-sheet-actions .btn-secondary {
+  margin-top: 0;
+}
+
+@media (min-width: 768px) {
+  .edit-overlay { align-items: center; }
+  .edit-sheet {
+    border-radius: 24px;
+    margin-bottom: 0;
+    max-height: 82dvh;
+  }
 }

@@ -16,7 +16,8 @@ const STORAGE_KEY = "lidt_tasks";
 const MASCOT_KEY = "lidt_mascot";                  // the user's chosen support animal (set on Page 4)
 const REFLECTION_KEY = "lidt_reflections";         // per-week journal + protect-next-week picks (Page 9)
 const SCHEMA_KEY  = "lidt_schema_version";         // bump to wipe legacy tasks on next load
-const SCHEMA_VERSION = 3;                          // V3 = Monday-based week keys (Page 5)
+const SCHEMA_VERSION = 4;                          // V4 = status field added (no wipe, migrated)
+const LAST_SEEN_KEY = "lidt_last_seen_day";        // ISO date string (YYYY-MM-DD) for carry-over logic
 
 // Support mascots offered on the Choose Your Animal page (Page 4).
 // Each entry maps to assets/mascots/<id>.png. Tint is the pastel
@@ -79,6 +80,19 @@ const DAY_CHIPS = [
 const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
 const PRIORITY_LABEL = { High: "🔴 High", Medium: "🟡 Medium", Low: "🟢 Low" };
 
+/* Task statuses — five states that replace the V1 done boolean.
+   The cycle (Not Started → In Progress → Done → Not Started) is
+   triggered by tapping the check button; Moved and Dropped are set
+   via the edit sheet. */
+const STATUSES = [
+  { id: "Not Started", label: "Not Started" },
+  { id: "In Progress", label: "In Progress" },
+  { id: "Done",        label: "Done"        },
+  { id: "Moved",       label: "Moved"       },
+  { id: "Dropped",     label: "Dropped"     },
+];
+const STATUS_CYCLE = ["Not Started", "In Progress", "Done"];
+
 // ---------- 2. STATE --------------------------------------------
 // One object holds everything the UI needs. When it changes, we re-render.
 const state = {
@@ -109,15 +123,29 @@ const state = {
 function loadTasks() {
   try {
     const stored = Number(localStorage.getItem(SCHEMA_KEY) || 0);
-    if (stored !== SCHEMA_VERSION) {
+    const raw = localStorage.getItem(STORAGE_KEY);
+
+    // V1→V3: field shape changed significantly — wipe and start fresh.
+    if (stored < 3) {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.setItem(SCHEMA_KEY, String(SCHEMA_VERSION));
       return [];
     }
-    const raw = localStorage.getItem(STORAGE_KEY);
+
+    // V3→V4: added `status` field. Migrate in place (no wipe needed).
+    // Any task missing `status` gets one derived from its `done` flag.
+    if (stored === 3) {
+      localStorage.setItem(SCHEMA_KEY, String(SCHEMA_VERSION));
+    }
+
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map(t => ({
+      ...t,
+      status: t.status || (t.done ? "Done" : "Not Started"),
+    }));
   } catch (e) {
     console.warn("Could not load tasks:", e);
     return [];
@@ -204,7 +232,8 @@ function addTask({ text, day, lifeArea, effort, priority, inTodayThree }) {
     effort,
     priority,
     inTodayThree: !!inTodayThree,
-    done: false,
+    status: "Not Started",
+    done: false,         // kept for backwards compat with older views
     weekKey: currentWeekKey(),
     createdAt: Date.now(),
   };
@@ -212,11 +241,26 @@ function addTask({ text, day, lifeArea, effort, priority, inTodayThree }) {
   saveTasks();
 }
 
-function toggleTask(id) {
+// Update any fields on an existing task.
+function updateTask(id, changes) {
   const t = state.tasks.find(x => x.id === id);
   if (!t) return;
-  t.done = !t.done;
+  Object.assign(t, changes);
+  // Keep the legacy `done` flag in sync with the status field.
+  if (changes.status !== undefined) {
+    t.done = changes.status === "Done";
+  }
   saveTasks();
+}
+
+// Cycle the task through Not Started → In Progress → Done → Not Started.
+function cycleTaskStatus(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  const current = t.status || "Not Started";
+  const idx = STATUS_CYCLE.indexOf(current);
+  const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  updateTask(id, { status: next });
 }
 
 function deleteTask(id) {
@@ -225,10 +269,15 @@ function deleteTask(id) {
 }
 
 // ---------- 6. SORTING & FILTERING ------------------------------
+// Status sort weight: active tasks first, completed/dropped last.
+const STATUS_SORT = { "Not Started": 0, "In Progress": 0, "Done": 2, "Moved": 3, "Dropped": 3 };
+
 function sortTasks(tasks) {
-  // Undone first, then High → Mid → Low, then by created time.
+  // Active statuses first, then High → Med → Low priority, then oldest first.
   return [...tasks].sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1;
+    const sA = STATUS_SORT[a.status || "Not Started"] ?? 0;
+    const sB = STATUS_SORT[b.status || "Not Started"] ?? 0;
+    if (sA !== sB) return sA - sB;
     const p = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
     if (p !== 0) return p;
     return a.createdAt - b.createdAt;
@@ -248,7 +297,8 @@ const EFFORT_POINTS = { Light: 1, Medium: 2, Deep: 3 };
 
 function attentionScoreFor(task) {
   const eff = EFFORT_POINTS[task.effort] || 1;
-  const completion = task.done ? 1 : 0;
+  const s = task.status || "Not Started";
+  const completion = s === "Done" ? 1 : s === "In Progress" ? 0.5 : 0;
   return eff * completion;
 }
 
@@ -346,23 +396,52 @@ function renderTaskList(container, tasks, emptyText = "No tasks yet.", opts = {}
 // round radio-style check on the left, title in the middle, two
 // pills (life area with coloured dot + effort) below the title,
 // small × on the right.
+// SVG icons for each status state on the check button.
+function checkIconFor(status) {
+  if (status === "Done") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  if (status === "In Progress") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>';
+  if (status === "Moved") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+  if (status === "Dropped") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+  return ""; // Not Started — empty circle via CSS border only
+}
+
 function weekTaskCard(t) {
+  const status = t.status || "Not Started";
+  const statusClass = status === "Done" ? " is-done"
+    : status === "Dropped" ? " is-dropped"
+    : status === "Moved"   ? " is-moved"
+    : "";
+
   const card = el("div", {
-    class: `task-card${t.done ? " is-done" : ""}`,
-    dataset: { id: t.id },
+    class: `task-card${statusClass}`,
+    dataset: { id: t.id, status, priority: t.priority || "Medium" },
   });
 
   const check = el("button", {
     class: "task-card-check",
     type: "button",
-    "aria-label": t.done ? "Mark incomplete" : "Mark complete",
-    onclick: (e) => { e.stopPropagation(); toggleTask(t.id); render(); },
-    html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    "aria-label": `Status: ${status}. Tap to cycle.`,
+    onclick: (e) => { e.stopPropagation(); cycleTaskStatus(t.id); render(); },
+    html: checkIconFor(status),
   });
 
-  const body = el("div", { class: "task-card-body" }, [
+  // Status pill — tapping it also cycles status (same as the check button)
+  const statusPill = el("span", {
+    class: "task-card-pill task-card-pill--status",
+    dataset: { status },
+    title: "Tap to cycle status",
+    onclick: (e) => { e.stopPropagation(); cycleTaskStatus(t.id); render(); },
+  }, status);
+
+  const body = el("div", {
+    class: "task-card-body",
+    style: "cursor:pointer",
+    title: "Tap to edit",
+    onclick: () => openEditSheet(t.id),
+  }, [
     el("div", { class: "task-card-title" }, t.text),
     el("div", { class: "task-card-meta" }, [
+      statusPill,
       el("span", {
         class: "task-card-pill task-card-pill--life",
         dataset: { life: t.lifeArea || "" },
@@ -1330,18 +1409,171 @@ document.getElementById("reviewPlanBtn").addEventListener("click", () => {
   setTimeout(() => { msg.hidden = true; }, 2200);
 });
 
+// ---------- 12b. EDIT TASK SHEET --------------------------------
+// State for the edit sheet — tracks which task is being edited and
+// the in-progress draft values so chips can show selected state.
+const editDraft = { taskId: null, day: null, lifeArea: null, effort: null, priority: null, status: null };
+
+function openEditSheet(taskId) {
+  const t = state.tasks.find(x => x.id === taskId);
+  if (!t) return;
+  // Prime the draft from the task's current values.
+  Object.assign(editDraft, {
+    taskId,
+    day:      t.day,
+    lifeArea: t.lifeArea,
+    effort:   t.effort,
+    priority: t.priority,
+    status:   t.status || "Not Started",
+  });
+  document.getElementById("editTaskText").value = t.text;
+  renderEditSheet();
+  document.getElementById("editOverlay").hidden = false;
+  document.getElementById("editTaskText").focus();
+}
+
+function closeEditSheet() {
+  document.getElementById("editOverlay").hidden = true;
+  editDraft.taskId = null;
+}
+
+function renderEditSheet() {
+  // Status chips (flat row, not pills — different style from effort/priority)
+  const statusRow = document.getElementById("editStatusChips");
+  statusRow.innerHTML = "";
+  STATUSES.forEach(({ id, label }) => {
+    const chip = el("button", {
+      class: `chip${editDraft.status === id ? " is-selected" : ""}`,
+      type: "button",
+      style: "flex:1; min-width:0; font-size:0.78rem; padding:8px 4px;",
+      onclick: () => { editDraft.status = id; renderEditSheet(); },
+    }, label);
+    statusRow.appendChild(chip);
+  });
+
+  // Day chips
+  const dayRow = document.getElementById("editDayChips");
+  dayRow.innerHTML = "";
+  DAY_CHIPS.forEach(({ short, jsDay }) => {
+    const chip = el("button", {
+      class: `chip${editDraft.day === jsDay ? " is-selected" : ""}`,
+      type: "button",
+      style: "flex:1; min-width:0;",
+      onclick: () => { editDraft.day = jsDay; renderEditSheet(); },
+    }, short);
+    dayRow.appendChild(chip);
+  });
+
+  // Life area chips
+  const lifeRow = document.getElementById("editLifeChips");
+  lifeRow.innerHTML = "";
+  LIFE_AREAS.forEach(({ id, label, icon }) => {
+    const chip = el("button", {
+      class: `life-chip${editDraft.lifeArea === id ? " is-selected" : ""}`,
+      type: "button",
+      "data-life": id,
+      onclick: () => { editDraft.lifeArea = id; renderEditSheet(); },
+    }, [
+      el("span", { class: "life-chip-icon", html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>` }),
+      label,
+    ]);
+    lifeRow.appendChild(chip);
+  });
+
+  // Effort chips
+  const effortRow = document.getElementById("editEffortChips");
+  effortRow.innerHTML = "";
+  EFFORTS.forEach(({ id, label, icon }) => {
+    const chip = el("button", {
+      class: `pill-chip${editDraft.effort === id ? " is-selected" : ""}`,
+      type: "button",
+      "data-effort": id,
+      onclick: () => { editDraft.effort = id; renderEditSheet(); },
+      html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>${label}`,
+    });
+    effortRow.appendChild(chip);
+  });
+
+  // Priority chips
+  const priorityRow = document.getElementById("editPriorityChips");
+  priorityRow.innerHTML = "";
+  PRIORITIES.forEach(({ id, label, icon }) => {
+    const chip = el("button", {
+      class: `pill-chip${editDraft.priority === id ? " is-selected" : ""}`,
+      type: "button",
+      "data-priority": id,
+      onclick: () => { editDraft.priority = id; renderEditSheet(); },
+      html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>${label}`,
+    });
+    priorityRow.appendChild(chip);
+  });
+}
+
+// Wire up the edit sheet Cancel + Save buttons + overlay tap to close.
+document.getElementById("editCancelBtn").addEventListener("click", closeEditSheet);
+document.getElementById("editSaveBtn").addEventListener("click", () => {
+  if (!editDraft.taskId) return;
+  const text = document.getElementById("editTaskText").value.trim();
+  if (!text) { document.getElementById("editTaskText").focus(); return; }
+  updateTask(editDraft.taskId, {
+    text,
+    day:      editDraft.day,
+    lifeArea: editDraft.lifeArea,
+    effort:   editDraft.effort,
+    priority: editDraft.priority,
+    status:   editDraft.status,
+  });
+  closeEditSheet();
+  render();
+});
+// Tap overlay background to cancel.
+document.getElementById("editOverlay").addEventListener("click", (e) => {
+  if (e.target === document.getElementById("editOverlay")) closeEditSheet();
+});
+
+// ---------- 12c. CARRY-OVER LOGIC --------------------------------
+// When the app opens on a new day, any tasks from earlier in the
+// current week that are still Not Started or In Progress get moved
+// to today. This way unfinished tasks don't pile up on past days.
+function runCarryOver() {
+  const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
+  // Update the last-seen date regardless.
+  localStorage.setItem(LAST_SEEN_KEY, todayStr);
+  if (lastSeen === todayStr) return; // Same day — nothing to carry over.
+
+  const todayJs = new Date().getDay();
+  const weekKey = currentWeekKey();
+  let changed = false;
+  state.tasks.forEach(t => {
+    if (t.weekKey !== weekKey) return;             // only this week's tasks
+    if (t.day === todayJs) return;                  // already on today
+    // Only carry over days strictly before today in the week.
+    // Determine "before today" by checking the date strip order.
+    const todayIdx  = DAY_CHIPS.findIndex(c => c.jsDay === todayJs);
+    const taskIdx   = DAY_CHIPS.findIndex(c => c.jsDay === t.day);
+    if (taskIdx >= todayIdx || taskIdx === -1) return; // future or unknown day
+    const s = t.status || "Not Started";
+    if (s !== "Not Started" && s !== "In Progress") return; // already resolved
+    t.day = todayJs;
+    changed = true;
+  });
+  if (changed) saveTasks();
+}
+
 // ---------- 13. SERVICE WORKER REGISTRATION ---------------------
 // Registers the offline cache. Only runs in production (via https or localhost).
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/service-worker.js")
+      .register("./service-worker.js")
       .catch(err => console.warn("Service worker registration failed:", err));
   });
 }
 
 // ---------- 14. BOOT --------------------------------------------
 state.tasks = loadTasks();
+runCarryOver(); // Move any yesterday's unfinished tasks to today.
 
 // First-time visitor (no mascot picked, welcome not yet dismissed) lands
 // on the welcome screen. Returning users skip straight to Today.

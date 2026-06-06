@@ -16,7 +16,7 @@
   <title>Look, I Did Things</title>
 
   <!-- PWA: tell the browser this site is installable -->
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#f4a535" />
 
   <!-- iOS-specific: makes "Add to Home Screen" feel native on iPhone -->
@@ -597,6 +597,53 @@
       </section>
 
     </main>
+
+    <!-- EDIT TASK SHEET -------------------------------------------------
+         Slide-up bottom drawer for editing an existing task.
+         Hidden by default; JS shows it when the user taps a task card.
+         Chip groups are populated by JS (same helpers as Page 6). -->
+    <div class="edit-overlay" id="editOverlay" hidden>
+      <div class="edit-sheet" id="editSheet" role="dialog" aria-modal="true" aria-label="Edit task">
+        <div class="edit-sheet-handle" aria-hidden="true"></div>
+        <h2 class="edit-sheet-heading">Edit Task</h2>
+
+        <div class="field edit-field">
+          <input class="field-input" type="text" id="editTaskText"
+                 placeholder="What do you want to get done?"
+                 maxlength="200" autocomplete="off">
+        </div>
+
+        <fieldset class="add-section">
+          <legend class="add-label">Status</legend>
+          <div class="chip-row edit-status-chips" id="editStatusChips" role="radiogroup" aria-label="Status"></div>
+        </fieldset>
+
+        <fieldset class="add-section">
+          <legend class="add-label">When?</legend>
+          <div class="chip-row chip-days" id="editDayChips" role="radiogroup" aria-label="Day of week"></div>
+        </fieldset>
+
+        <fieldset class="add-section">
+          <legend class="add-label">Life Area</legend>
+          <div class="chip-grid life-chips" id="editLifeChips" role="radiogroup" aria-label="Life area"></div>
+        </fieldset>
+
+        <fieldset class="add-section">
+          <legend class="add-label">Effort</legend>
+          <div class="chip-row pill-row effort-chips" id="editEffortChips" role="radiogroup" aria-label="Effort"></div>
+        </fieldset>
+
+        <fieldset class="add-section">
+          <legend class="add-label">Priority</legend>
+          <div class="chip-row pill-row priority-chips" id="editPriorityChips" role="radiogroup" aria-label="Priority"></div>
+        </fieldset>
+
+        <div class="edit-sheet-actions">
+          <button type="button" class="btn-secondary" id="editCancelBtn">Cancel</button>
+          <button type="button" class="btn-primary" id="editSaveBtn">Save changes</button>
+        </div>
+      </div>
+    </div>
 
     <!-- BOTTOM NAVIGATION (V2 wireframe pattern) ----------------------
          5 slots with the middle one being a floating teal "+" button.
